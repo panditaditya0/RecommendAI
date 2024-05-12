@@ -17,17 +17,8 @@ jobs:
           rev=$(git rev-parse --short HEAD)
           echo "rev  ${rev}"
           ls
-          cd ProcessProductDetails
-          ls
           mvn clean package -DskipTests
-          sudo docker build --build-arg GIT_COMMIT=${rev} -t process-product-details/t:latest -f Dockerfile .
-          sudo docker image tag process-product-details/t nexus.ppustage.dev/process-product-details-service:${rev}
+          sudo docker build --build-arg GIT_COMMIT=${rev} -t RecommendAI/t:latest -f Dockerfile .
+          sudo docker image tag RecommendAI/t nexus.ppustage.dev/RecommendAIs-service:${rev}
           sudo docker login -u docker-psl -p 1q2w3e nexus.ppustage.dev
-          sudo docker push nexus.ppustage.dev/process-product-details-service:${rev}
-          cd ..
-          cd Similar-Image-Publisher
-          mvn clean package -DskipTests
-          sudo docker build --build-arg GIT_COMMIT=${rev} -t similar-image-publisher/t:latest -f Dockerfile .
-          sudo docker image tag similar-image-publisher/t nexus.ppustage.dev/similar-image-publisher-service:${rev}
-          sudo docker login -u docker-psl -p 1q2w3e nexus.ppustage.dev
-          sudo docker push nexus.ppustage.dev/similar-image-publisher-service:${rev}
+          sudo docker push nexus.ppustage.dev/RecommendAI-service:${rev}
