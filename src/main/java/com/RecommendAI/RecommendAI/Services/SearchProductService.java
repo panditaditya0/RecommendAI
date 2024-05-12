@@ -118,13 +118,7 @@ public class SearchProductService {
         ProductDetailsModel productDetails = productDetailsRepo.findBySkuId(requestPayload.skuId);
         ArrayList<String>  listOfSkuIdsFromWeaviateDb = weaviateQueryService.getListOfProductsForCompleteTheLook(productDetails);
         listOfSkuIdsFromWeaviateDb.remove(requestPayload.skuId);
-        LinkedList<String> finalListOfSku_Ids = new LinkedList<>(listOfSkuIdsFromWeaviateDb);
-        if(finalListOfSku_Ids.size() >15) {
-            int size = finalListOfSku_Ids.size();
-            for(int i =15 ;i<size;i++){
-                finalListOfSku_Ids.remove(i);
-            }
-        }
+        LinkedList<String> finalListOfSku_Ids = new LinkedList<>(listOfSkuIdsFromWeaviateDb.subList(0,15));
         this.saveToRedis(finalListOfSku_Ids, requestPayload.skuId, fromSameBrand);
         return prepareProductDetails(finalListOfSku_Ids);
     }
