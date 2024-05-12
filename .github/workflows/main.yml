@@ -1,0 +1,33 @@
+name: Test, Upload artifact
+
+on: workflow_dispatch
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    name: Build, package and
+    steps:
+      - uses: actions/checkout@v1
+      - name: Set up JDK 17
+        uses: actions/setup-java@v1
+        with:
+          java-version: 17
+      - name: Build and package project
+        run: |
+          rev=$(git rev-parse --short HEAD)
+          echo "rev  ${rev}"
+          ls
+          cd ProcessProductDetails
+          ls
+          mvn clean package -DskipTests
+          sudo docker build --build-arg GIT_COMMIT=${rev} -t process-product-details/t:latest -f Dockerfile .
+          sudo docker image tag process-product-details/t nexus.ppustage.dev/process-product-details-service:${rev}
+          sudo docker login -u docker-psl -p 1q2w3e nexus.ppustage.dev
+          sudo docker push nexus.ppustage.dev/process-product-details-service:${rev}
+          cd ..
+          cd Similar-Image-Publisher
+          mvn clean package -DskipTests
+          sudo docker build --build-arg GIT_COMMIT=${rev} -t similar-image-publisher/t:latest -f Dockerfile .
+          sudo docker image tag similar-image-publisher/t nexus.ppustage.dev/similar-image-publisher-service:${rev}
+          sudo docker login -u docker-psl -p 1q2w3e nexus.ppustage.dev
+          sudo docker push nexus.ppustage.dev/similar-image-publisher-service:${rev}
