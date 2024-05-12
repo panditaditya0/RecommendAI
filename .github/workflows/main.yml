@@ -18,7 +18,7 @@ jobs:
           echo "rev  ${rev}"
           ls
           mvn clean package -DskipTests
-          sudo docker build --build-arg GIT_COMMIT=${rev} -t RecommendAI/t:latest -f Dockerfile .
-          sudo docker image tag RecommendAI/t nexus.ppustage.dev/RecommendAIs-service:${rev}
+          sudo docker build --build-arg GIT_COMMIT=${rev} -t recommendai/t:latest -f Dockerfile .
+          sudo docker image tag recommendai/t nexus.ppustage.dev/recommendai-service:${rev}
           sudo docker login -u docker-psl -p 1q2w3e nexus.ppustage.dev
-          sudo docker push nexus.ppustage.dev/RecommendAI-service:${rev}
+          sudo docker push nexus.ppustage.dev/recommendai-service:${rev}
