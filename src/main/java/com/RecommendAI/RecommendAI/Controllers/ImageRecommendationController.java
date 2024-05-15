@@ -23,7 +23,7 @@ public class ImageRecommendationController {
     public ResponseEntity getSimilarImageOfSameDesigner(@RequestBody RequestPayload payload) {
         try {
             ArrayList<ResponsePayload> responsePayloads = searchProductService
-                    .getSimilarProduct(payload, true);
+                    .getSimilarProductOfSameDesigner(payload, true);
             return new ResponseEntity<>(responsePayloads, HttpStatus.FOUND);
         } catch (Exception ex) {
             return new ResponseEntity<>(ex.getMessage() , HttpStatus.BAD_REQUEST);
@@ -32,10 +32,10 @@ public class ImageRecommendationController {
 
     @CrossOrigin
     @PostMapping("/fetch2")
-    public ResponseEntity getSimilarProducts(@RequestBody RequestPayload payload) {
+    public ResponseEntity getSimilarProductsOfDifferentDesigner(@RequestBody RequestPayload payload) {
         try {
             ArrayList<ResponsePayload> responsePayloads = searchProductService
-                    .getSimilarProduct(payload, false);
+                    .getSimilarProductOfSameDesigner(payload, false);
             return new ResponseEntity<>(responsePayloads, HttpStatus.FOUND);
         } catch (Exception ex) {
             return new ResponseEntity<>(ex.getMessage() , HttpStatus.BAD_REQUEST);
@@ -47,7 +47,7 @@ public class ImageRecommendationController {
     public ResponseEntity getCompleteTheLook(@RequestBody RequestPayload payload) {
         try {
             ArrayList<ResponsePayload> responsePayloads = searchProductService
-                    .getCompletethelook(payload, false);
+                    .getCompletethelook(payload);
             return new ResponseEntity<>(responsePayloads, HttpStatus.FOUND);
         } catch (Exception ex) {
             return new ResponseEntity<>(ex.getMessage() , HttpStatus.BAD_REQUEST);

@@ -9,7 +9,7 @@ import lombok.ToString;
 @Getter
 @Setter
 @ToString
-@Table(name = "child_category")
+@Table(name = "child_category_2")
 public class ChildCategoryModel {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

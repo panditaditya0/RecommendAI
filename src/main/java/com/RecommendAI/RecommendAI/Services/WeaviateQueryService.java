@@ -1,6 +1,7 @@
 package com.RecommendAI.RecommendAI.Services;
 
 import com.RecommendAI.RecommendAI.Config.WeaviateConfig;
+import com.RecommendAI.RecommendAI.Model.ChildCategoryModel;
 import com.RecommendAI.RecommendAI.Model.ProductDetailsModel;
 import com.google.gson.*;
 import io.weaviate.client.WeaviateClient;
@@ -27,12 +28,16 @@ public class WeaviateQueryService {
         NearImageArgument base64Image = NearImageArgument.builder().image(productDetailsModel.base64Image).build();
 
         WhereFilter [] whereFilters = new WhereFilter[]{
-            this.whereFilterFactory("brand", "Equal", productDetailsModel.brand),
-            this.whereFilterFactory("color", "Equal", productDetailsModel.color),
-            this.whereFilterFactory("parentCategory", "Equal", productDetailsModel.parentCategory)
+            this.whereFilterFactory("brand", Operator.Equal, productDetailsModel.brand),
+            this.whereFilterFactory("color", Operator.Equal, productDetailsModel.color),
+            this.whereFilterFactory("parentCategory", Operator.Equal, productDetailsModel.parent_category),
+            this.whereFilterFactory("childCategories", Operator.Equal, productDetailsModel.child_categories)
         };
 
-        WhereFilter allFilters = WhereFilter.builder().operator(Operator.And).operands(whereFilters).build();
+        WhereFilter allFilters = WhereFilter.builder()
+                .operator(Operator.Or)
+                .operands(whereFilters)
+                .build();
         WhereArgument whereArgument =  WhereArgument.builder().filter(allFilters).build();
         Result<GraphQLResponse> result = client.graphQL().get()
                 .withClassName("TestImg16")
@@ -77,7 +82,7 @@ public class WeaviateQueryService {
 
         WhereFilter [] whereFilters = new WhereFilter[]{
                 this.whereFilterFactory("color", "Equal", productDetailsModel.color),
-                this.whereFilterFactory("parentCategory", "Equal", productDetailsModel.parentCategory),
+                this.whereFilterFactory("parentCategory", "Equal", productDetailsModel.parent_category),
         };
 
         WhereFilter allFilters = WhereFilter.builder().operator(Operator.And).operands(whereFilters).build();
@@ -124,6 +129,18 @@ public class WeaviateQueryService {
                 .path(path)
                 .operator(operator)
                 .valueString(valueString)
+                .build();
+    }
+
+    public WhereFilter whereFilterFactory (String path, String operator, Set<ChildCategoryModel> valueString){
+        ArrayList<String> a = new ArrayList<>();
+        valueString.forEach(childCategoryModel -> {
+            a.add(childCategoryModel.getLabel());
+        });
+        return   WhereFilter.builder()
+                .path(new String[]{path})
+                .operator(operator)
+                .valueText(a.toString())
                 .build();
     }
 
