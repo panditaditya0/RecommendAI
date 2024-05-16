@@ -35,7 +35,7 @@ public class WeaviateQueryService {
         };
 
         WhereFilter allFilters = WhereFilter.builder()
-                .operator(Operator.Or)
+                .operator(Operator.And)
                 .operands(whereFilters)
                 .build();
         WhereArgument whereArgument =  WhereArgument.builder().filter(allFilters).build();

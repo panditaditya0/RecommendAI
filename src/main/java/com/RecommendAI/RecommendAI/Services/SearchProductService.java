@@ -29,9 +29,9 @@ public class SearchProductService {
 
     public ArrayList<ResponsePayload> getSimilarProductOfSameDesigner(RequestPayload requestPayload, boolean fromSameBrand) {
         LinkedList<String> listOfSkuIdsFromRedis = getListOfSkuIdsFromRedis(requestPayload.skuId+"YES");
-//        if (listOfSkuIdsFromRedis.size() >0) {
-//            return prepareProductDetails(listOfSkuIdsFromRedis);
-//        }
+        if (listOfSkuIdsFromRedis.size() >0) {
+            return prepareProductDetails(listOfSkuIdsFromRedis);
+        }
         ProductDetailsModel productDetails = productDetailsRepo.findBySkuId(requestPayload.skuId);
         ArrayList<String> listOfSkuIdsFromWeaviateDb = new ArrayList<>();
         listOfSkuIdsFromWeaviateDb = weaviateQueryService.getListOfSkuIdsFromWeaviateDb(productDetails);
