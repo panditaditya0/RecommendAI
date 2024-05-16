@@ -43,6 +43,6 @@ public class ProductDetailsModel {
     public String base64Image;
 
     @OneToMany(cascade = CascadeType.ALL)
-    @JoinColumn(name = "kafka_payload_id", referencedColumnName = "entity_id")
+    @JoinColumn(name = "kafka_entity_id", referencedColumnName = "entity_id")
     public Set<ChildCategoryModel> child_categories;
 }

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 public interface ProductDetailsRepo extends JpaRepository<ProductDetailsModel, Long> {
@@ -36,13 +37,13 @@ public interface ProductDetailsRepo extends JpaRepository<ProductDetailsModel, L
             "        Max(t1.special_price_row)        AS special_price_row,\n" +
             "        Max(t1.uuid)        AS uuid,\n" +
             "        Max(t1.updated_at)        AS updated_at,\n" +
-            "        t2.kafka_payload_id as id,\n" +
+            "        t2.kafka_entity_id as id,\n" +
             "        String_agg(t2.label, ',') AS label\n" +
             "        from product_details_2 t1 JOIN child_category_2 t2\n" +
-            "        ON t1.entity_id = t2.kafka_payload_id\n" +
+            "        ON t1.entity_id = t2.kafka_entity_id\n" +
             "        WHERE  t1.sku_id in (?1)\n" +
-            "       GROUP  BY t2.kafka_payload_id;", nativeQuery = true)
-    ArrayList<ProductDetailsModel> findByListOfIds(List<String> skuIds);
+            "       GROUP  BY t2.kafka_entity_id;", nativeQuery = true)
+    ArrayList<ProductDetailsModel> findByListOfIds(LinkedHashSet<String> skuIds);
 
 
     @Query(value = "select sku_id from product_details_2 pd where color = ?1 \n" +

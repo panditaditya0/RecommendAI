@@ -1,5 +1,6 @@
 package com.RecommendAI.RecommendAI.Services;
 
+import com.RecommendAI.RecommendAI.Model.ChildCategoryModel;
 import com.RecommendAI.RecommendAI.Model.ProductDetailsModel;
 import com.RecommendAI.RecommendAI.Model.RequestPayload;
 import com.RecommendAI.RecommendAI.Model.ResponsePayload;
@@ -9,16 +10,19 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
+
+import java.util.*;
 
 @Service
 public class SearchProductService {
     private final Logger LOGGER = LoggerFactory.getLogger(SearchProductService.class);
     public ProductDetailsRepo productDetailsRepo;
     private final int SKU_LENGTH_LIMIT = 15;
+    private final int SKU_LENGTH_LIMIT_OTHER_BRAND = 100;
+    private final List<String> JEWELLERY = new ArrayList<>(List.of("earrings","cuffs", "bracelets", "necklaces", "rings","bangles"
+    ,"pendants", "brooches", "hand harness", "earcuffs", "head pieces", "body chains", "arm bands", "anklets", "nose rings"
+    ,"maangtikas", "kaleeras", "cufflinks"));
+
 
     @Autowired
     private RedisTemplate template;
@@ -30,24 +34,24 @@ public class SearchProductService {
         this.productDetailsRepo = productDetailsRepo;
     }
 
-    public LinkedList<ResponsePayload> getSimilarProductOfDifferentDesigner(RequestPayload requestPayload) {
-        LinkedList<String> listOfSkuIdsFromRedis = getListOfSkuIdsFromRedis(requestPayload.skuId+"NO");
+    public LinkedHashSet<ResponsePayload> getSimilarProductOfDifferentDesigner(RequestPayload requestPayload) {
+        LinkedHashSet<String> listOfSkuIdsFromRedis = getListOfSkuIdsFromRedis(requestPayload.skuId+"NO");
         if (listOfSkuIdsFromRedis.size() >0) {
             return prepareProductDetails(listOfSkuIdsFromRedis);
         }
         ProductDetailsModel productDetail = productDetailsRepo.findBySkuId(requestPayload.skuId);
-        LinkedList<String> listOfSkuIdsFromWeaviateDb = this.listOfSimilarSkuIdsFromWeaviateDb(productDetail, false);
+        LinkedHashSet<String> listOfSkuIdsFromWeaviateDb = this.listOfSimilarSkuIdsFromWeaviateDb(productDetail, false);
         this.saveSkuIdsToRedis(listOfSkuIdsFromWeaviateDb, requestPayload.skuId+"NO");
         return prepareProductDetails(listOfSkuIdsFromWeaviateDb);
     }
 
-    public LinkedList<ResponsePayload> getSimilarProductOfSameDesigner(RequestPayload requestPayload) {
-        LinkedList<String> listOfSkuIdsFromRedis = getListOfSkuIdsFromRedis(requestPayload.skuId+"YES");
+    public LinkedHashSet<ResponsePayload> getSimilarProductOfSameDesigner(RequestPayload requestPayload) {
+        LinkedHashSet<String> listOfSkuIdsFromRedis = getListOfSkuIdsFromRedis(requestPayload.skuId+"YES");
         if (listOfSkuIdsFromRedis.size() >0) {
             return prepareProductDetails(listOfSkuIdsFromRedis);
         }
         ProductDetailsModel productDetails = productDetailsRepo.findBySkuId(requestPayload.skuId);
-        LinkedList<String> listOfSkuIdsFromWeaviateDb = new LinkedList<>();
+        LinkedHashSet<String> listOfSkuIdsFromWeaviateDb = new LinkedHashSet<>();
         listOfSkuIdsFromWeaviateDb = this.listOfSimilarSkuIdsFromWeaviateDb(productDetails, true);
         if(listOfSkuIdsFromWeaviateDb.contains(requestPayload.skuId)){
             listOfSkuIdsFromWeaviateDb.remove(requestPayload.skuId);
@@ -58,15 +62,23 @@ public class SearchProductService {
         return prepareProductDetails(listOfSkuIdsFromWeaviateDb);
     }
 
-    public LinkedList<ResponsePayload> getCompleteThelook(RequestPayload requestPayload){
-        LinkedList<String> listOfSkuIdsFromRedis = getListOfSkuIdsFromRedis(requestPayload.skuId+"COMPLETE");
+    public LinkedHashSet<ResponsePayload> getCompleteThelook(RequestPayload requestPayload){
+        LinkedHashSet<String> listOfSkuIdsFromRedis = getListOfSkuIdsFromRedis(requestPayload.skuId+"COMPLETE");
         if (listOfSkuIdsFromRedis.size() >0) {
             return prepareProductDetails(listOfSkuIdsFromRedis);
         }
         ProductDetailsModel productDetails = productDetailsRepo.findBySkuId(requestPayload.skuId);
-        ArrayList<String>  listOfSkuIdsFromWeaviateDb = weaviateQueryService.getListOfProductsForCompleteTheLook(productDetails);
+        List<String> randomFive = JEWELLERY.subList(0, Math.min(5, JEWELLERY.size()));
+        LinkedList<String>  listOfSkuIdsFromWeaviateDb = new LinkedList<>();
+        for(String childCategory : randomFive){
+
+            LinkedHashSet<String> temp = weaviateQueryService.getListOfSkuIdsFromWeaviateDb(productDetails,weaviateQueryService.filterCompleteTheLookForCloths("clothing", childCategory),false, 3);
+            if(temp.size()>0){
+                listOfSkuIdsFromWeaviateDb.addAll(temp);
+            }
+        }
         listOfSkuIdsFromWeaviateDb.remove(requestPayload.skuId);
-        LinkedList<String> finalListOfSku_Ids = new LinkedList<>(listOfSkuIdsFromWeaviateDb.subList(0,SKU_LENGTH_LIMIT));
+        LinkedHashSet<String> finalListOfSku_Ids = new LinkedHashSet<>(listOfSkuIdsFromWeaviateDb.subList(0,SKU_LENGTH_LIMIT));
         this.saveSkuIdsToRedis(finalListOfSku_Ids, requestPayload.skuId+"COMPLETE");
         return prepareProductDetails(finalListOfSku_Ids);
     }
@@ -77,9 +89,9 @@ public class SearchProductService {
         template.delete(sku+"COMPLETE");
     }
 
-    private LinkedList<ResponsePayload> prepareProductDetails(LinkedList<String> listOfSkuIdsFromRedis) {
+    private LinkedHashSet<ResponsePayload> prepareProductDetails(LinkedHashSet<String> listOfSkuIdsFromRedis) {
         ArrayList<ProductDetailsModel> listOfProducts =  productDetailsRepo.findByListOfIds(listOfSkuIdsFromRedis);
-        LinkedList<ResponsePayload> responsePayloads = new LinkedList<>();
+        LinkedHashSet<ResponsePayload> responsePayloads = new LinkedHashSet<>();
 
         for (String aSku : listOfSkuIdsFromRedis){
             Optional a = listOfProducts.stream()
@@ -105,33 +117,40 @@ public class SearchProductService {
         }
         return responsePayloads;
     }
-
-    private LinkedList<String> getListOfSkuIdsFromRedis(String key) {
+    private LinkedHashSet<String> getListOfSkuIdsFromRedis(String key) {
         Object listOfSkus = template.opsForList().range(key, 0, -1);
-        LinkedList<String> listOfSkuIdsFromRedis = new LinkedList<>();
+        LinkedHashSet<String> listOfSkuIdsFromRedis = new LinkedHashSet<>();
         listOfSkuIdsFromRedis.addAll((ArrayList<String>) listOfSkus);
         return listOfSkuIdsFromRedis;
     }
-
-    private LinkedList<String> listOfSimilarSkuIdsFromWeaviateDb(ProductDetailsModel productDetails, boolean isSameBrand) {
-        LinkedList<String> listOfSkuIdsFromWeaviateDb = new LinkedList<>();
-        listOfSkuIdsFromWeaviateDb = weaviateQueryService.getListOfSkuIdsFromWeaviateDb(productDetails, weaviateQueryService.filterLevelOne(productDetails, isSameBrand),isSameBrand);
+    private LinkedHashSet<String> listOfSimilarSkuIdsFromWeaviateDb(ProductDetailsModel productDetails, boolean isSameBrand) {
+        int limit =  isSameBrand? SKU_LENGTH_LIMIT:SKU_LENGTH_LIMIT_OTHER_BRAND;
+        LinkedHashSet<String> listOfSkuIdsFromWeaviateDb = new LinkedHashSet<>();
+        listOfSkuIdsFromWeaviateDb = weaviateQueryService.getListOfSkuIdsFromWeaviateDb(productDetails, weaviateQueryService.filterLevelOne(productDetails,productDetails.child_categories, isSameBrand),isSameBrand, limit);
+        for (ChildCategoryModel aChildCategory : productDetails.child_categories){
+            Set<ChildCategoryModel> temp = new HashSet<>(){
+                {
+                    add(aChildCategory);
+                }
+            };
+            LinkedHashSet<String> listOhChildCategories = weaviateQueryService.getListOfSkuIdsFromWeaviateDb(productDetails, weaviateQueryService.filterLevelOne(productDetails, temp,isSameBrand),isSameBrand,limit);
+            listOfSkuIdsFromWeaviateDb =this.addSkuIdToExistingList(listOfSkuIdsFromWeaviateDb, listOhChildCategories);
+        }
         if(listOfSkuIdsFromWeaviateDb.size() < SKU_LENGTH_LIMIT) {
-            LinkedList<String> listOfSkuIdsFromLevelTwoFilter = weaviateQueryService.getListOfSkuIdsFromWeaviateDb(productDetails, weaviateQueryService.filterLevelTwo(productDetails, isSameBrand),isSameBrand);
+            LinkedHashSet<String> listOfSkuIdsFromLevelTwoFilter = weaviateQueryService.getListOfSkuIdsFromWeaviateDb(productDetails, weaviateQueryService.filterLevelTwo(productDetails, isSameBrand),isSameBrand,limit);
             listOfSkuIdsFromWeaviateDb =this.addSkuIdToExistingList(listOfSkuIdsFromWeaviateDb, listOfSkuIdsFromLevelTwoFilter);
         }
         if(listOfSkuIdsFromWeaviateDb.size() < SKU_LENGTH_LIMIT) {
-            LinkedList<String> listOfSkuIdsFromLevelThreeFilter = weaviateQueryService.getListOfSkuIdsFromWeaviateDb(productDetails, weaviateQueryService.filterLevelThree(productDetails, isSameBrand),isSameBrand);
+            LinkedHashSet<String> listOfSkuIdsFromLevelThreeFilter = weaviateQueryService.getListOfSkuIdsFromWeaviateDb(productDetails, weaviateQueryService.filterLevelThree(productDetails, isSameBrand),isSameBrand,limit);
             listOfSkuIdsFromWeaviateDb = this.addSkuIdToExistingList(listOfSkuIdsFromWeaviateDb, listOfSkuIdsFromLevelThreeFilter);
         }
         return this.getSkuIfOfLength(listOfSkuIdsFromWeaviateDb);
     }
-
-    private void saveSkuIdsToRedis(LinkedList<String> listOfSkuIds, String key ) {
+    private void saveSkuIdsToRedis(LinkedHashSet<String> listOfSkuIds, String key ) {
         template.delete(key);
         template.opsForList().rightPushAll(key, listOfSkuIds.toArray(new String[0]));
     }
-    private LinkedList<String> addSkuIdToExistingList(LinkedList<String> listOfSkuIds, List<String> listOfSkuIdsFromDb) {
+    private LinkedHashSet<String> addSkuIdToExistingList(LinkedHashSet<String> listOfSkuIds, LinkedHashSet<String> listOfSkuIdsFromDb) {
         for (String skuId : listOfSkuIdsFromDb) {
             if(!listOfSkuIds.contains(skuId)){
                 listOfSkuIds.add(skuId);
@@ -142,9 +161,8 @@ public class SearchProductService {
         }
         return listOfSkuIds;
     }
-
-    private LinkedList getSkuIfOfLength(LinkedList<String> listOfSkuIds) {
-        LinkedList<String> listOfSkuIdsnew = new LinkedList<>();
+    private LinkedHashSet getSkuIfOfLength(LinkedHashSet<String> listOfSkuIds) {
+        LinkedHashSet<String> listOfSkuIdsnew = new LinkedHashSet<>();
         for (String skuId : listOfSkuIds) {
             if (listOfSkuIdsnew.size() < SKU_LENGTH_LIMIT) {
                 listOfSkuIdsnew.add(skuId);

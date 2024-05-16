@@ -8,7 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.LinkedList;
+import java.util.LinkedHashSet;
 import java.util.logging.Logger;
 
 @RestController
@@ -22,7 +22,7 @@ public class ImageRecommendationController {
     @PostMapping("/fetch")
     public ResponseEntity getSimilarImageOfSameDesigner(@RequestBody RequestPayload payload) {
         try {
-            LinkedList<ResponsePayload> responsePayloads = searchProductService
+            LinkedHashSet<ResponsePayload> responsePayloads = searchProductService
                     .getSimilarProductOfSameDesigner(payload);
             return new ResponseEntity<>(responsePayloads, HttpStatus.FOUND);
         } catch (Exception ex) {
@@ -34,7 +34,7 @@ public class ImageRecommendationController {
     @PostMapping("/fetch2")
     public ResponseEntity getSimilarProductsOfDifferentDesigner(@RequestBody RequestPayload payload) {
         try {
-            LinkedList<ResponsePayload> responsePayloads = searchProductService
+            LinkedHashSet<ResponsePayload> responsePayloads = searchProductService
                     .getSimilarProductOfDifferentDesigner(payload);
             return new ResponseEntity<>(responsePayloads, HttpStatus.FOUND);
         } catch (Exception ex) {
@@ -46,7 +46,7 @@ public class ImageRecommendationController {
     @PostMapping("/fetch3")
     public ResponseEntity getCompleteTheLook(@RequestBody RequestPayload payload) {
         try {
-            LinkedList<ResponsePayload> responsePayloads = searchProductService
+            LinkedHashSet<ResponsePayload> responsePayloads = searchProductService
                     .getCompleteThelook(payload);
             return new ResponseEntity<>(responsePayloads, HttpStatus.FOUND);
         } catch (Exception ex) {
@@ -65,8 +65,4 @@ public class ImageRecommendationController {
             return new ResponseEntity<>(ex.getMessage() , HttpStatus.BAD_REQUEST);
         }
     }
-
-
-
-
 }

@@ -23,20 +23,19 @@ public class WeaviateQueryService {
     @Autowired
     private WeaviateConfig weaviateConfig;
 
-    public LinkedList<String> getListOfSkuIdsFromWeaviateDb(ProductDetailsModel productDetailsModel, WhereFilter[] whereFilters, boolean isSameBrand) {
-        int limit = isSameBrand ? 15 : 50;
+    public LinkedHashSet<String> getListOfSkuIdsFromWeaviateDb(ProductDetailsModel productDetailsModel, WhereFilter[] whereFilters, boolean isSameBrand, int limit) {
         WeaviateClient client = weaviateConfig.weaviateClientMethod();
         NearImageArgument base64Image = NearImageArgument.builder().image(productDetailsModel.base64Image).build();
 
         WhereFilter allFilters = WhereFilter.builder().operator(Operator.And).operands(whereFilters).build();
-        WhereArgument whereArgument =  WhereArgument.builder().filter(allFilters).build();
+        WhereArgument whereArgument = WhereArgument.builder().filter(allFilters).build();
 
         Result<GraphQLResponse> result = client.graphQL().get()
                 .withClassName("TestImg16")
                 .withNearImage(base64Image)
                 .withWhere(whereArgument)
                 .withFields(Field.builder().name("sku_id").build())
-                .withLimit(limit)
+                .withLimit(limit+1)
                 .run();
 
         String jsonString = new GsonBuilder()
@@ -46,30 +45,30 @@ public class WeaviateQueryService {
                         .getResult()
                         .getData());
 
-        if(jsonString.equalsIgnoreCase("null")){
+        if (jsonString.equalsIgnoreCase("null")) {
             throw new RuntimeException(String.valueOf(result.getResult().getErrors()[0].getMessage()));
         }
 
-        JsonArray testImgArray =  new JsonParser()
+        JsonArray testImgArray = new JsonParser()
                 .parse(jsonString)
                 .getAsJsonObject()
                 .getAsJsonObject("Get")
                 .getAsJsonArray("TestImg16");
 
-        LinkedList<String> skuList = new LinkedList<>();
+        LinkedHashSet<String> skuList = new LinkedHashSet<>();
         String substring = productDetailsModel.sku_id.substring(0, 4);
 
         for (int i = 0; i < testImgArray.size(); i++) {
             JsonObject item = testImgArray.get(i).getAsJsonObject();
             String skuId = item.get("sku_id").getAsString();
-            if(skuId.equalsIgnoreCase(productDetailsModel.sku_id)){
+            if (skuId.equalsIgnoreCase(productDetailsModel.sku_id)) {
                 continue;
             }
-            if(!isSameBrand){
-                if(!skuId.toLowerCase().contains(substring.toLowerCase())) {
+            if (!isSameBrand) {
+                if (!skuId.toLowerCase().contains(substring.toLowerCase())) {
                     skuList.add(skuId);
                 }
-            }else {
+            } else {
                 skuList.add(skuId);
             }
         }
@@ -77,103 +76,130 @@ public class WeaviateQueryService {
         return skuList;
     }
 
-    private WhereFilter whereFilterFactory (String path, String operator, String valueString){
-        return   WhereFilter.builder()
+    private WhereFilter whereFilterFactory(String path, String operator, String valueString) {
+        return WhereFilter.builder()
                 .path(path)
                 .operator(operator)
                 .valueString(valueString)
                 .build();
     }
 
-    private WhereFilter whereFilterFactory (String path, String operator, Set<ChildCategoryModel> valueString){
+    private WhereFilter whereFilterFactory(String path, String operator, Set<ChildCategoryModel> valueString) {
         ArrayList<String> a = new ArrayList<>();
         valueString.forEach(childCategoryModel -> {
             a.add(childCategoryModel.getLabel());
         });
-        return   WhereFilter.builder()
+        return WhereFilter.builder()
                 .path(new String[]{path})
                 .operator(operator)
                 .valueText(a.toString())
                 .build();
+
     }
 
-    public ArrayList<String> getListOfProductsForCompleteTheLook(ProductDetailsModel productDetails) {
-        WeaviateClient client = weaviateConfig.weaviateClientMethod();
-        NearImageArgument base64Image = NearImageArgument.builder().image(productDetails.base64Image).build();
-        WhereFilter [] whereFilters = new WhereFilter[]{
-                this.whereFilterFactory("parentCategory", "Equal", "Jewellery"),
-        };
-        WhereFilter allFilters = WhereFilter.builder().operator(Operator.And).operands(whereFilters).build();
-        WhereArgument whereArgument =  WhereArgument.builder().filter(allFilters).build();
+//    public ArrayList<String> getListOfProductsForCompleteTheLook(ProductDetailsModel productDetails) {
+//        WeaviateClient client = weaviateConfig.weaviateClientMethod();
+//        NearImageArgument base64Image = NearImageArgument.builder().image(productDetails.base64Image).build();
+//        WhereFilter [] whereFilters = new WhereFilter[]{
+//                this.whereFilterFactory("parentCategory", "Equal", "clothing"),
+//                this.whereFilterFactory("childCategory", Operator.Or, new ArrayList<>()),
+//        };
+//        WhereFilter allFilters = WhereFilter.builder().operator(Operator.And).operands(whereFilters).build();
+//        WhereArgument whereArgument =  WhereArgument.builder().filter(allFilters).build();
+//
+//        Result<GraphQLResponse> result = client.graphQL().get()
+//                .withClassName("TestImg16")
+//                .withNearImage(base64Image)
+//                .withWhere(whereArgument)
+//                .withFields(Field.builder().name("sku_id").build())
+//                .withLimit(50)
+//                .run();
+//
+//        String jsonString = new GsonBuilder()
+//                .setPrettyPrinting()
+//                .create()
+//                .toJson(result
+//                        .getResult()
+//                        .getData());
+//
+//        if(jsonString.equalsIgnoreCase("null")){
+//            throw new RuntimeException(String.valueOf(result.getResult().getErrors()[0].getMessage()));
+//        }
+//
+//        JsonArray testImgArray =  new JsonParser()
+//                .parse(jsonString)
+//                .getAsJsonObject()
+//                .getAsJsonObject("Get")
+//                .getAsJsonArray("TestImg16");
+//
+//        ArrayList<String> skuList = new ArrayList<>();
+//
+//        for (int i = 0; i < testImgArray.size(); i++) {
+//            JsonObject item = testImgArray.get(i).getAsJsonObject();
+//            String skuId = item.get("sku_id").getAsString();
+//            skuList.add(skuId);
+//        }
+//
+//        return skuList;
+//    }
 
-        Result<GraphQLResponse> result = client.graphQL().get()
-                .withClassName("TestImg16")
-                .withNearImage(base64Image)
-                .withWhere(whereArgument)
-                .withFields(Field.builder().name("sku_id").build())
-                .withLimit(50)
-                .run();
-
-        String jsonString = new GsonBuilder()
-                .setPrettyPrinting()
-                .create()
-                .toJson(result
-                        .getResult()
-                        .getData());
-
-        if(jsonString.equalsIgnoreCase("null")){
-            throw new RuntimeException(String.valueOf(result.getResult().getErrors()[0].getMessage()));
-        }
-
-        JsonArray testImgArray =  new JsonParser()
-                .parse(jsonString)
-                .getAsJsonObject()
-                .getAsJsonObject("Get")
-                .getAsJsonArray("TestImg16");
-
-        ArrayList<String> skuList = new ArrayList<>();
-
-        for (int i = 0; i < testImgArray.size(); i++) {
-            JsonObject item = testImgArray.get(i).getAsJsonObject();
-            String skuId = item.get("sku_id").getAsString();
-            skuList.add(skuId);
-        }
-
-        return skuList;
-    }
-
-    public WhereFilter[] filterLevelOne(ProductDetailsModel productDetails, boolean isSameBrand){
-        if (isSameBrand){
-            return new WhereFilter[]{
-                    this.whereFilterFactory("brand", Operator.Equal, productDetails.brand),
+    public WhereFilter[] filterLevelOne(ProductDetailsModel productDetails, Set<ChildCategoryModel> setOfChildCategories, boolean isSameBrand) {
+        if (productDetails.getChild_categories().size() == 0) {
+            if (isSameBrand) {
+                return new WhereFilter[]{
+                        this.whereFilterFactory("brand", Operator.Equal, productDetails.brand),
+                        this.whereFilterFactory("color", Operator.Equal, productDetails.color),
+                        this.whereFilterFactory("parentCategory", Operator.Equal, productDetails.parent_category),
+                };
+            }
+            return (new WhereFilter[]{
                     this.whereFilterFactory("color", Operator.Equal, productDetails.color),
                     this.whereFilterFactory("parentCategory", Operator.Equal, productDetails.parent_category),
-                    this.whereFilterFactory("childCategories", Operator.Equal, productDetails.child_categories)
-            };
+            });
+        } else {
+            if (isSameBrand) {
+                return new WhereFilter[]{
+                        this.whereFilterFactory("brand", Operator.Equal, productDetails.brand),
+                        this.whereFilterFactory("color", Operator.Equal, productDetails.color),
+                        this.whereFilterFactory("parentCategory", Operator.Equal, productDetails.parent_category),
+                        this.whereFilterFactory("childCategories", Operator.Equal, setOfChildCategories)
+                };
+            }
+            return (new WhereFilter[]{
+                    this.whereFilterFactory("color", Operator.Equal, productDetails.color),
+                    this.whereFilterFactory("parentCategory", Operator.Equal, productDetails.parent_category),
+                    this.whereFilterFactory("childCategories", Operator.Equal, setOfChildCategories)
+            });
         }
-        return new WhereFilter[]{
-                this.whereFilterFactory("color", Operator.Equal, productDetails.color),
-                this.whereFilterFactory("parentCategory", Operator.Equal, productDetails.parent_category),
-                this.whereFilterFactory("childCategories", Operator.Equal, productDetails.child_categories)
-        };
     }
 
-    public WhereFilter[] filterLevelTwo(ProductDetailsModel productDetails, boolean isSameBrand){
-        if (isSameBrand){
+    public WhereFilter[] filterLevelTwo(ProductDetailsModel productDetails, boolean isSameBrand) {
+        if (isSameBrand) {
             return new WhereFilter[]{
                     this.whereFilterFactory("brand", Operator.Equal, productDetails.brand),
                     this.whereFilterFactory("color", Operator.Equal, productDetails.color),
                     this.whereFilterFactory("parentCategory", Operator.Equal, productDetails.parent_category)
             };
         }
+        if (productDetails.getChild_categories().size() == 0) {
+            return new WhereFilter[]{
+                    this.whereFilterFactory("parentCategory", Operator.Equal, productDetails.parent_category),
+                    this.whereFilterFactory("childCategories", Operator.Equal, productDetails.child_categories)
+            };
+        }
         return new WhereFilter[]{
-                this.whereFilterFactory("parentCategory", Operator.Equal, productDetails.parent_category),
-                this.whereFilterFactory("childCategories", Operator.Equal, productDetails.child_categories)
+                this.whereFilterFactory("parentCategory", Operator.Equal, productDetails.parent_category)
         };
     }
 
-    public WhereFilter[] filterLevelThree(ProductDetailsModel productDetails, boolean isSameBrand){
-        if(isSameBrand){
+    public WhereFilter[] filterLevelThree(ProductDetailsModel productDetails, boolean isSameBrand) {
+        if (isSameBrand) {
+            if (productDetails.getChild_categories().size() == 0) {
+                return new WhereFilter[]{
+                        this.whereFilterFactory("brand", Operator.Equal, productDetails.brand),
+                        this.whereFilterFactory("parentCategory", Operator.Equal, productDetails.parent_category),
+                };
+            }
             return new WhereFilter[]{
                     this.whereFilterFactory("brand", Operator.Equal, productDetails.brand),
                     this.whereFilterFactory("parentCategory", Operator.Equal, productDetails.parent_category),
@@ -182,6 +208,19 @@ public class WeaviateQueryService {
         }
         return new WhereFilter[]{
                 this.whereFilterFactory("parentCategory", Operator.Equal, productDetails.parent_category),
+        };
+    }
+
+    public WhereFilter[] filterCompleteTheLookForCloths(String parentCategory, String childCategories) {
+        ChildCategoryModel a = new ChildCategoryModel();
+        a.setLabel(childCategories);
+        a.setId(123);
+        a.setKafka_entity_id(123);
+        Set<ChildCategoryModel> temp = new HashSet<>();
+        temp.add(a);
+        return new WhereFilter[]{
+                this.whereFilterFactory("parentCategory", Operator.Equal, parentCategory),
+                this.whereFilterFactory("childCategories", Operator.Equal, temp)
         };
     }
 }

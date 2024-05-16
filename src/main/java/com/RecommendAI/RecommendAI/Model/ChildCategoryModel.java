@@ -12,7 +12,10 @@ import lombok.ToString;
 @Table(name = "child_category_2")
 public class ChildCategoryModel {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
-    private String label;
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    public long id;
+
+    @JoinColumn(name="entity_id")
+    public long kafka_entity_id;
+    public String label;
 }
