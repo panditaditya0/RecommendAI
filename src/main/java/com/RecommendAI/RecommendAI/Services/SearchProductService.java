@@ -27,7 +27,7 @@ public class SearchProductService {
         this.productDetailsRepo = productDetailsRepo;
     }
 
-    public ArrayList<ResponsePayload> getSimilarProductOfSameDesigner(RequestPayload requestPayload, boolean fromSameBrand) {
+    public ArrayList<ResponsePayload> getSimilarProductOfSameDesigner(RequestPayload requestPayload) {
         LinkedList<String> listOfSkuIdsFromRedis = getListOfSkuIdsFromRedis(requestPayload.skuId+"YES");
         if (listOfSkuIdsFromRedis.size() >0) {
             return prepareProductDetails(listOfSkuIdsFromRedis);

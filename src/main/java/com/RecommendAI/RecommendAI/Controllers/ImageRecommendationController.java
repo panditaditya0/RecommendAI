@@ -23,7 +23,7 @@ public class ImageRecommendationController {
     public ResponseEntity getSimilarImageOfSameDesigner(@RequestBody RequestPayload payload) {
         try {
             ArrayList<ResponsePayload> responsePayloads = searchProductService
-                    .getSimilarProductOfSameDesigner(payload, true);
+                    .getSimilarProductOfSameDesigner(payload);
             return new ResponseEntity<>(responsePayloads, HttpStatus.FOUND);
         } catch (Exception ex) {
             return new ResponseEntity<>(ex.getMessage() , HttpStatus.BAD_REQUEST);
@@ -35,7 +35,7 @@ public class ImageRecommendationController {
     public ResponseEntity getSimilarProductsOfDifferentDesigner(@RequestBody RequestPayload payload) {
         try {
             ArrayList<ResponsePayload> responsePayloads = searchProductService
-                    .getSimilarProductOfSameDesigner(payload, false);
+                    .getSimilarProductOfDifferentDesigner(payload);
             return new ResponseEntity<>(responsePayloads, HttpStatus.FOUND);
         } catch (Exception ex) {
             return new ResponseEntity<>(ex.getMessage() , HttpStatus.BAD_REQUEST);
