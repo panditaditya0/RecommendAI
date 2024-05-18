@@ -1,10 +1,9 @@
 package com.RecommendAI.RecommendAI.Services;
 
-import com.RecommendAI.RecommendAI.Model.ChildCategoryModel;
-import com.RecommendAI.RecommendAI.Model.ProductDetailsModel;
-import com.RecommendAI.RecommendAI.Model.RequestPayload;
-import com.RecommendAI.RecommendAI.Model.ResponsePayload;
+import com.RecommendAI.RecommendAI.Model.*;
 import com.RecommendAI.RecommendAI.Repo.ProductDetailsRepo;
+import com.RecommendAI.RecommendAI.Repo.UsersRepo;
+import io.weaviate.client.v1.filters.Operator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,12 +16,12 @@ import java.util.*;
 public class SearchProductService {
     private final Logger LOGGER = LoggerFactory.getLogger(SearchProductService.class);
     public ProductDetailsRepo productDetailsRepo;
+    public UsersRepo usersRepo;
     private final int SKU_LENGTH_LIMIT = 15;
     private final int SKU_LENGTH_LIMIT_OTHER_BRAND = 100;
     private final List<String> JEWELLERY = new ArrayList<>(List.of("earrings","cuffs", "bracelets", "necklaces", "rings","bangles"
     ,"pendants", "brooches", "hand harness", "earcuffs", "head pieces", "body chains", "arm bands", "anklets", "nose rings"
     ,"maangtikas", "kaleeras", "cufflinks"));
-
 
     @Autowired
     private RedisTemplate template;
@@ -30,8 +29,9 @@ public class SearchProductService {
     @Autowired
     private WeaviateQueryService weaviateQueryService;
 
-    public SearchProductService(ProductDetailsRepo productDetailsRepo){
+    public SearchProductService(ProductDetailsRepo productDetailsRepo,UsersRepo usersRepo ){
         this.productDetailsRepo = productDetailsRepo;
+        this.usersRepo = usersRepo;
     }
 
     public LinkedHashSet<ResponsePayload> getSimilarProductOfDifferentDesigner(RequestPayload requestPayload) {
@@ -68,19 +68,14 @@ public class SearchProductService {
             return prepareProductDetails(listOfSkuIdsFromRedis);
         }
         ProductDetailsModel productDetails = productDetailsRepo.findBySkuId(requestPayload.skuId);
-        List<String> randomFive = JEWELLERY.subList(0, Math.min(5, JEWELLERY.size()));
-        LinkedList<String>  listOfSkuIdsFromWeaviateDb = new LinkedList<>();
-        for(String childCategory : randomFive){
-
-            LinkedHashSet<String> temp = weaviateQueryService.getListOfSkuIdsFromWeaviateDb(productDetails,weaviateQueryService.filterCompleteTheLookForCloths("clothing", childCategory),false, 3);
-            if(temp.size()>0){
-                listOfSkuIdsFromWeaviateDb.addAll(temp);
-            }
-        }
+        ArrayList<String> randomFive = new ArrayList<>(JEWELLERY.subList(0, Math.min(5, JEWELLERY.size())));
+        LinkedHashSet<String> listOfSkuIdsFromWeaviateDb = weaviateQueryService.getListOfSkuIdsFromWeaviateDb(productDetails,weaviateQueryService.filterCompleteTheLookForCloths(randomFive),false, 3, Operator.Or);
         listOfSkuIdsFromWeaviateDb.remove(requestPayload.skuId);
-        LinkedHashSet<String> finalListOfSku_Ids = new LinkedHashSet<>(listOfSkuIdsFromWeaviateDb.subList(0,SKU_LENGTH_LIMIT));
-        this.saveSkuIdsToRedis(finalListOfSku_Ids, requestPayload.skuId+"COMPLETE");
-        return prepareProductDetails(finalListOfSku_Ids);
+        if(listOfSkuIdsFromWeaviateDb.size()>15){
+            listOfSkuIdsFromWeaviateDb = new LinkedHashSet<>(new ArrayList<>(listOfSkuIdsFromWeaviateDb).subList(0,SKU_LENGTH_LIMIT));
+        }
+        this.saveSkuIdsToRedis(listOfSkuIdsFromWeaviateDb, requestPayload.skuId+"COMPLETE");
+        return prepareProductDetails(listOfSkuIdsFromWeaviateDb);
     }
 
     public void clearRedisForASkuId(String sku){
@@ -107,7 +102,7 @@ public class SearchProductService {
                         .discountedPrice(aProductDetailsModel.discount_in)
                         .regionSalePrice(aProductDetailsModel.price_in)
                         .brand(aProductDetailsModel.brand)
-                        .imageLink(aProductDetailsModel.image_link)
+                        .imageLink("https://img.perniaspopupshop.com/catalog/product"+aProductDetailsModel.image_link)
                         .discount(aProductDetailsModel.discount_in)
                         .link(aProductDetailsModel.link)
                         .salePrice(aProductDetailsModel.special_price_in)
@@ -126,22 +121,22 @@ public class SearchProductService {
     private LinkedHashSet<String> listOfSimilarSkuIdsFromWeaviateDb(ProductDetailsModel productDetails, boolean isSameBrand) {
         int limit =  isSameBrand? SKU_LENGTH_LIMIT:SKU_LENGTH_LIMIT_OTHER_BRAND;
         LinkedHashSet<String> listOfSkuIdsFromWeaviateDb = new LinkedHashSet<>();
-        listOfSkuIdsFromWeaviateDb = weaviateQueryService.getListOfSkuIdsFromWeaviateDb(productDetails, weaviateQueryService.filterLevelOne(productDetails,productDetails.child_categories, isSameBrand),isSameBrand, limit);
+        listOfSkuIdsFromWeaviateDb = weaviateQueryService.getListOfSkuIdsFromWeaviateDb(productDetails, weaviateQueryService.filterLevelOne(productDetails,productDetails.child_categories, isSameBrand),isSameBrand, limit,Operator.And);
         for (ChildCategoryModel aChildCategory : productDetails.child_categories){
             Set<ChildCategoryModel> temp = new HashSet<>(){
                 {
                     add(aChildCategory);
                 }
             };
-            LinkedHashSet<String> listOhChildCategories = weaviateQueryService.getListOfSkuIdsFromWeaviateDb(productDetails, weaviateQueryService.filterLevelOne(productDetails, temp,isSameBrand),isSameBrand,limit);
+            LinkedHashSet<String> listOhChildCategories = weaviateQueryService.getListOfSkuIdsFromWeaviateDb(productDetails, weaviateQueryService.filterLevelOne(productDetails, temp,isSameBrand),isSameBrand,limit,Operator.And);
             listOfSkuIdsFromWeaviateDb =this.addSkuIdToExistingList(listOfSkuIdsFromWeaviateDb, listOhChildCategories);
         }
         if(listOfSkuIdsFromWeaviateDb.size() < SKU_LENGTH_LIMIT) {
-            LinkedHashSet<String> listOfSkuIdsFromLevelTwoFilter = weaviateQueryService.getListOfSkuIdsFromWeaviateDb(productDetails, weaviateQueryService.filterLevelTwo(productDetails, isSameBrand),isSameBrand,limit);
+            LinkedHashSet<String> listOfSkuIdsFromLevelTwoFilter = weaviateQueryService.getListOfSkuIdsFromWeaviateDb(productDetails, weaviateQueryService.filterLevelTwo(productDetails, isSameBrand),isSameBrand,limit,Operator.And);
             listOfSkuIdsFromWeaviateDb =this.addSkuIdToExistingList(listOfSkuIdsFromWeaviateDb, listOfSkuIdsFromLevelTwoFilter);
         }
         if(listOfSkuIdsFromWeaviateDb.size() < SKU_LENGTH_LIMIT) {
-            LinkedHashSet<String> listOfSkuIdsFromLevelThreeFilter = weaviateQueryService.getListOfSkuIdsFromWeaviateDb(productDetails, weaviateQueryService.filterLevelThree(productDetails, isSameBrand),isSameBrand,limit);
+            LinkedHashSet<String> listOfSkuIdsFromLevelThreeFilter = weaviateQueryService.getListOfSkuIdsFromWeaviateDb(productDetails, weaviateQueryService.filterLevelThree(productDetails, isSameBrand),isSameBrand,limit,Operator.And);
             listOfSkuIdsFromWeaviateDb = this.addSkuIdToExistingList(listOfSkuIdsFromWeaviateDb, listOfSkuIdsFromLevelThreeFilter);
         }
         return this.getSkuIfOfLength(listOfSkuIdsFromWeaviateDb);
@@ -169,5 +164,68 @@ public class SearchProductService {
             }
         }
         return listOfSkuIdsnew;
+    }
+
+    public LinkedHashSet<ResponsePayload> getRecentlyViewed(RequestPayload requestPayload) {
+        if(requestPayload.user_id == "" && requestPayload.mad_uuid == ""){
+            throw new RuntimeException("user_id/mad_uuid is mandatory");
+        }
+        if (requestPayload.user_id != ""){
+            Users alreadyAUser = usersRepo.getUsinguserId(UUID.fromString(requestPayload.user_id));
+            LinkedHashSet<String> listOfSkus = new LinkedHashSet<>(Arrays.stream(alreadyAUser.getSkuIds().get(0).split(",")).toList());
+            return prepareProductDetails(listOfSkus);
+        } else {
+            Users alreadyAUser = usersRepo.getUsingMadId(UUID.fromString(requestPayload.mad_uuid));
+            LinkedHashSet<String> listOfSkus = new LinkedHashSet<>(alreadyAUser.getSkuIds());
+            return prepareProductDetails(listOfSkus);
+        }
+    }
+
+    private void processRecentedViewedSkus(Users user, String skuId, List<String> listOfSkus) {
+        if (listOfSkus.size() == 0) {
+            List<String> newSkuList = new ArrayList<>() {
+                {
+                    add(skuId);
+                }
+            };
+            user.setSkuIds(newSkuList);
+            usersRepo.save(user);
+        } else {
+            LinkedHashSet<String> listOfAllSkuIds = new LinkedHashSet<>() {
+                {
+                    add(skuId);
+                }
+            };
+            listOfAllSkuIds.addAll(listOfSkus);
+            if (listOfAllSkuIds.size() >= 15) {
+                listOfAllSkuIds.remove(listOfAllSkuIds.size() - 1);
+            }
+            user.setSkuIds(listOfAllSkuIds.stream().toList());
+            usersRepo.save(user);
+            prepareProductDetails(new LinkedHashSet<>(listOfAllSkuIds));
+        }
+    }
+
+    public void saveSkuIdToRecentlyViewed(RequestPayload requestPayload) {
+        if(requestPayload.user_id == "" && requestPayload.mad_uuid == ""){
+            throw new RuntimeException("user_id/mad_uuid is mandatory");
+        }
+        if(requestPayload.user_id != ""){
+            Users alreadyAUser = usersRepo.getUsinguserId(UUID.fromString(requestPayload.user_id));
+            List<String> listOfSkus = listOfSkus = Arrays.stream(alreadyAUser.getSkuIds().get(0).split(",")).toList();
+            processRecentedViewedSkus(alreadyAUser, requestPayload.skuId, listOfSkus);
+        }
+        else {
+            Users userSkuDetails = usersRepo.getUsingMadId(UUID.fromString(requestPayload.mad_uuid));
+            List<String> listOfSkus = new ArrayList<>();
+
+            if(null != userSkuDetails){
+                processRecentedViewedSkus(userSkuDetails, requestPayload.skuId, userSkuDetails.skuIds);
+            }else {
+                userSkuDetails = new Users();
+                userSkuDetails.setMad_id(UUID.fromString(requestPayload.mad_uuid));
+                processRecentedViewedSkus(userSkuDetails, requestPayload.skuId,listOfSkus);
+            }
+        }
     }
 }

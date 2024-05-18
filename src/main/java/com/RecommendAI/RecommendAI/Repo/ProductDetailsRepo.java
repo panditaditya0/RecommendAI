@@ -6,7 +6,6 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
-import java.util.List;
 
 public interface ProductDetailsRepo extends JpaRepository<ProductDetailsModel, Long> {
 

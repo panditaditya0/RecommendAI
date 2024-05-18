@@ -23,12 +23,18 @@ public class WeaviateQueryService {
     @Autowired
     private WeaviateConfig weaviateConfig;
 
-    public LinkedHashSet<String> getListOfSkuIdsFromWeaviateDb(ProductDetailsModel productDetailsModel, WhereFilter[] whereFilters, boolean isSameBrand, int limit) {
+    public LinkedHashSet<String> getListOfSkuIdsFromWeaviateDb(ProductDetailsModel productDetailsModel, WhereFilter[] whereFilters, boolean isSameBrand, int limit, String operator) {
         WeaviateClient client = weaviateConfig.weaviateClientMethod();
         NearImageArgument base64Image = NearImageArgument.builder().image(productDetailsModel.base64Image).build();
 
-        WhereFilter allFilters = WhereFilter.builder().operator(Operator.And).operands(whereFilters).build();
-        WhereArgument whereArgument = WhereArgument.builder().filter(allFilters).build();
+        WhereFilter allFilters = WhereFilter.builder()
+                .operator(operator)
+                .operands(whereFilters)
+                .build();
+        WhereArgument whereArgument = WhereArgument
+                .builder()
+                .filter(allFilters)
+                .build();
 
         Result<GraphQLResponse> result = client.graphQL().get()
                 .withClassName("TestImg16")
@@ -211,16 +217,20 @@ public class WeaviateQueryService {
         };
     }
 
-    public WhereFilter[] filterCompleteTheLookForCloths(String parentCategory, String childCategories) {
-        ChildCategoryModel a = new ChildCategoryModel();
-        a.setLabel(childCategories);
-        a.setId(123);
-        a.setKafka_entity_id(123);
-        Set<ChildCategoryModel> temp = new HashSet<>();
-        temp.add(a);
-        return new WhereFilter[]{
-                this.whereFilterFactory("parentCategory", Operator.Equal, parentCategory),
-                this.whereFilterFactory("childCategories", Operator.Equal, temp)
-        };
+    public WhereFilter[] filterCompleteTheLookForCloths( ArrayList<String> childCategories) {
+        ArrayList<WhereFilter> whereFilters = new ArrayList<>();
+        for (String childCategory : childCategories) {
+            ChildCategoryModel a = new ChildCategoryModel();
+            a.setLabel(childCategory);
+            a.setId(123);
+            a.setKafka_entity_id(123);
+            Set<ChildCategoryModel> temp = new HashSet<>();
+            temp.add(a);
+            whereFilters.add(this.whereFilterFactory("childCategories", Operator.Equal, temp));
+        }
+
+        WhereFilter[] array = new WhereFilter[whereFilters.size()];
+        for(int i = 0; i < whereFilters.size(); i++) array[i] = whereFilters.get(i);
+        return array;
     }
 }

@@ -2,15 +2,21 @@ package com.RecommendAI.RecommendAI.Model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class RequestPayload {
+import java.util.ArrayList;
 
-    @JsonProperty("exchange_rate")
-    public double exchangeRate;
-    public RequestFilters filters;
-    @JsonProperty("sku_id")
-    public String skuId;
-    public String region;
+public class RequestPayload{
+    public ArrayList<Long> num_results;
+    public ArrayList<Long> widget_list;
+    public String mad_uuid;
+    public String user_id;
     @JsonProperty("product_id")
     public String productId;
+    public boolean details;
+    public ArrayList<String> fields;
+    public ExtraParams extra_params;
+    public String region;
+    public ArrayList<Filter> filters;
+    @JsonProperty("sku_id")
+    public String skuId;
 }
 
