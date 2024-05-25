@@ -100,121 +100,59 @@ public class WeaviateQueryServiceImpl implements VectorDatabaseService {
     }
 
     @Override
-    public ArrayList<String> getListOfProductsForCompleteTheLook(ProductDetailsModel productDetails) {
-        WeaviateClient client = weaviateConfig.weaviateClientMethod();
-        NearImageArgument base64Image = NearImageArgument.builder().image(productDetails.base64Image).build();
-        WhereFilter [] whereFilters = new WhereFilter[]{
-                this.whereFilterFactory("parentCategory", "Equal", "clothing"),
-                this.whereFilterFactory("childCategory", Operator.Or, new ArrayList<>()),
-        };
-        WhereFilter allFilters = WhereFilter.builder().operator(Operator.And).operands(whereFilters).build();
-        WhereArgument whereArgument =  WhereArgument.builder().filter(allFilters).build();
-
-        Result<GraphQLResponse> result = client.graphQL().get()
-                .withClassName("TestImg18")
-                .withNearImage(base64Image)
-                .withWhere(whereArgument)
-                .withFields(Field.builder().name("sku_id").build())
-                .withLimit(50)
-                .run();
-
-        String jsonString = new GsonBuilder()
-                .setPrettyPrinting()
-                .create()
-                .toJson(result
-                        .getResult()
-                        .getData());
-
-        if(jsonString.equalsIgnoreCase("null")){
-            throw new RuntimeException(String.valueOf(result.getResult().getErrors()[0].getMessage()));
-        }
-
-        JsonArray testImgArray =  new JsonParser()
-                .parse(jsonString)
-                .getAsJsonObject()
-                .getAsJsonObject("Get")
-                .getAsJsonArray("TestImg18");
-
-        ArrayList<String> skuList = new ArrayList<>();
-
-        for (int i = 0; i < testImgArray.size(); i++) {
-            JsonObject item = testImgArray.get(i).getAsJsonObject();
-            String skuId = item.get("sku_id").getAsString();
-            skuList.add(skuId);
-        }
-
-        return skuList;
-    }
-
-    @Override
     public WhereFilter[] filterLevelOne(ProductDetailsModel productDetails, boolean isSameBrand) {
-        if (productDetails.getChild_categories().size() == 0) {
-            if (isSameBrand) {
-                return new WhereFilter[]{
-                        this.whereFilterFactory("brand", Operator.Equal, productDetails.brand),
-                        this.whereFilterFactory("color", Operator.Equal, productDetails.color),
-                        this.whereFilterFactory("parent_categories", Operator.ContainsAny, productDetails.parent_categories),
-                };
-            }
-            return (new WhereFilter[]{
-                    this.whereFilterFactory("color", Operator.Equal, productDetails.color),
-                    this.whereFilterFactory("parent_categories", Operator.ContainsAny, productDetails.parent_categories),
-            });
-        } else {
-            if (isSameBrand) {
-                return new WhereFilter[]{
-                        this.whereFilterFactory("brand", Operator.Equal, productDetails.brand),
-                        this.whereFilterFactory("color", Operator.Equal, productDetails.color),
-                        this.whereFilterFactory("parent_categories", Operator.ContainsAny, productDetails.parent_categories),
-                        this.whereFilterFactory("child_categories", Operator.ContainsAny, productDetails.child_categories)
-                };
-            }
-            return (new WhereFilter[]{
-                    this.whereFilterFactory("color", Operator.Equal, productDetails.color),
-                    this.whereFilterFactory("parent_categories", Operator.ContainsAny, productDetails.parent_categories),
-                    this.whereFilterFactory("child_categories", Operator.ContainsAny, productDetails.child_categories)
-            });
+        List<WhereFilter> filters = new ArrayList<>();
+
+        if (isSameBrand) {
+            filters.add(this.whereFilterFactory("brand", Operator.Equal, productDetails.brand));
         }
+
+        filters.add(this.whereFilterFactory("color", Operator.Equal, productDetails.color));
+        filters.add(this.whereFilterFactory("parent_categories", Operator.ContainsAny, productDetails.parent_categories));
+
+        if (!productDetails.getChild_categories().isEmpty()) {
+            filters.add(this.whereFilterFactory("child_categories", Operator.ContainsAny, productDetails.child_categories));
+        }
+
+        return filters.toArray(new WhereFilter[0]);
     }
 
     @Override
     public WhereFilter[] filterLevelTwo(ProductDetailsModel productDetails, boolean isSameBrand) {
+        List<WhereFilter> filters = new ArrayList<>();
+
         if (isSameBrand) {
-            return new WhereFilter[]{
-                    this.whereFilterFactory("brand", Operator.Equal, productDetails.brand),
-                    this.whereFilterFactory("color", Operator.Equal, productDetails.color),
-                    this.whereFilterFactory("parent_categories", Operator.ContainsAny, productDetails.parent_categories)
-            };
+            filters.add(this.whereFilterFactory("brand", Operator.Equal, productDetails.brand));
+            filters.add(this.whereFilterFactory("color", Operator.Equal, productDetails.color));
+        } else {
+            if (productDetails.getChild_categories().isEmpty()) {
+                filters.add(this.whereFilterFactory("parentCategory", Operator.Equal, productDetails.parent_category));
+            }
         }
-        if (productDetails.getChild_categories().size() == 0) {
-            return new WhereFilter[]{
-                    this.whereFilterFactory("parentCategory", Operator.Equal, productDetails.parent_category),
-                    this.whereFilterFactory("child_categories", Operator.ContainsAny, productDetails.child_categories)
-            };
+
+        filters.add(this.whereFilterFactory("parent_categories", Operator.ContainsAny, productDetails.parent_categories));
+
+        if (!isSameBrand && !productDetails.getChild_categories().isEmpty()) {
+            filters.add(this.whereFilterFactory("child_categories", Operator.ContainsAny, productDetails.child_categories));
         }
-        return new WhereFilter[]{
-                this.whereFilterFactory("parent_categories", Operator.ContainsAny, productDetails.parent_categories)
-        };
+
+        return filters.toArray(new WhereFilter[0]);
     }
 
     @Override
     public WhereFilter[] filterLevelThree(ProductDetailsModel productDetails, boolean isSameBrand) {
+        List<WhereFilter> filters = new ArrayList<>();
         if (isSameBrand) {
-            if (productDetails.getChild_categories().size() == 0) {
-                return new WhereFilter[]{
-                        this.whereFilterFactory("brand", Operator.Equal, productDetails.brand),
-                        this.whereFilterFactory("parent_categories", Operator.ContainsAny, productDetails.parent_categories)
-                };
-            }
-            return new WhereFilter[]{
-                    this.whereFilterFactory("brand", Operator.Equal, productDetails.brand),
-                    this.whereFilterFactory("parent_categories", Operator.ContainsAny, productDetails.parent_categories),
-                    this.whereFilterFactory("child_categories", Operator.ContainsAny, productDetails.child_categories)
-            };
+            filters.add(this.whereFilterFactory("brand", Operator.Equal, productDetails.brand));
         }
-        return new WhereFilter[]{
-                this.whereFilterFactory("parent_categories", Operator.ContainsAny, productDetails.parent_categories)
-        };
+
+        filters.add(this.whereFilterFactory("parent_categories", Operator.ContainsAny, productDetails.parent_categories));
+
+        if (isSameBrand && !productDetails.getChild_categories().isEmpty()) {
+            filters.add(this.whereFilterFactory("child_categories", Operator.ContainsAny, productDetails.child_categories));
+        }
+
+        return filters.toArray(new WhereFilter[0]);
     }
 
     @Override

@@ -8,7 +8,6 @@ import java.util.LinkedHashSet;
 
 public interface VectorDatabaseService {
     LinkedHashSet<String> getListOfSkuIdsFromWeaviateDb(ProductDetailsModel productDetailsModel, WhereFilter[] whereFilters, boolean isSameBrand, int limit, String operator);
-    ArrayList<String> getListOfProductsForCompleteTheLook(ProductDetailsModel productDetails);
     WhereFilter[] filterLevelOne(ProductDetailsModel productDetails, boolean isSameBrand);
     WhereFilter[] filterLevelTwo(ProductDetailsModel productDetails, boolean isSameBrand);
     WhereFilter[] filterLevelThree(ProductDetailsModel productDetails, boolean isSameBrand);
