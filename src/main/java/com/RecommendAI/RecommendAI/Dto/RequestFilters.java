@@ -1,4 +1,4 @@
-package com.RecommendAI.RecommendAI.Model;
+package com.RecommendAI.RecommendAI.Dto;
 
 public class RequestFilters {
     public String brand;

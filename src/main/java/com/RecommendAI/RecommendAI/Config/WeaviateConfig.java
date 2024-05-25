@@ -1,6 +1,5 @@
 package com.RecommendAI.RecommendAI.Config;
 
-import com.RecommendAI.RecommendAI.Services.WeaviateQueryService;
 import io.weaviate.client.Config;
 import io.weaviate.client.base.Result;
 import io.weaviate.client.v1.misc.model.Meta;

@@ -1,4 +1,4 @@
-package com.RecommendAI.RecommendAI.Model;
+package com.RecommendAI.RecommendAI.Dto;
 
 import java.util.LinkedHashSet;
 import java.util.List;

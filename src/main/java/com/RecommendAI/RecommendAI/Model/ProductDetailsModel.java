@@ -5,12 +5,14 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
-import java.util.Set;
+import java.util.List;
 
 @Entity
-@Table(name = "product_details_2")
+@Table(name = "product_details_3")
 @Getter
 @Setter
 @ToString
@@ -41,8 +43,12 @@ public class ProductDetailsModel {
     public LocalDateTime updated_at;
     @Column(name = "base_64_image")
     public String base64Image;
-
-    @OneToMany(cascade = CascadeType.ALL)
-    @JoinColumn(name = "kafka_entity_id", referencedColumnName = "entity_id")
-    public Set<ChildCategoryModel> child_categories;
+    public String categories;
+    public String in_stock;
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "child_categories", columnDefinition = "text[]")
+    public List<String> child_categories;
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "parent_categories", columnDefinition = "text[]")
+    public List<String> parent_categories;
 }

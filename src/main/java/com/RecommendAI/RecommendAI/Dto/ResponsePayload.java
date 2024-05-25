@@ -1,4 +1,4 @@
-package com.RecommendAI.RecommendAI.Model;
+package com.RecommendAI.RecommendAI.Dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
