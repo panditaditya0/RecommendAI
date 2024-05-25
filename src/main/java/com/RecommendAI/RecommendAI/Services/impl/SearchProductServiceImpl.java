@@ -6,11 +6,13 @@ import com.RecommendAI.RecommendAI.Dto.ResponseProductDetails;
 import com.RecommendAI.RecommendAI.Model.*;
 import com.RecommendAI.RecommendAI.Repo.ProductDetailsRepo;
 import com.RecommendAI.RecommendAI.Repo.UsersRepo;
+import com.RecommendAI.RecommendAI.Services.EventStreamingPlatformService;
 import com.RecommendAI.RecommendAI.Services.SearchProductService;
 import com.RecommendAI.RecommendAI.Services.VectorDatabaseService;
 import io.weaviate.client.v1.filters.Operator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +26,7 @@ public class SearchProductServiceImpl implements SearchProductService {
     private final UsersRepo usersRepo;
     private final RedisTemplate template;
     private final VectorDatabaseService vectorDatabaseService;
+    private final EventStreamingPlatformService kafkaService;
 
     private final String SUCCESS = "success";
     private final String FAILED = "failed";
@@ -35,6 +38,9 @@ public class SearchProductServiceImpl implements SearchProductService {
     private final List<String> JEWELLERY = new ArrayList<>(List.of("earrings", "cuffs", "bracelets", "necklaces", "rings", "bangles"
             , "pendants", "brooches", "hand harness", "earcuffs", "head pieces", "body chains", "arm bands", "anklets", "nose rings"
             , "maangtikas", "kaleeras", "cufflinks"));
+
+    @Value("${KAFKA_DOWNLOAD_IMAGE_TOPIC}")
+    private String KAFKA_DOWNLOAD_IMAGE_TOPIC;
 
     @Override
     public ResponsePayload getSimilarProductOfDifferentDesigner(RequestPayload requestPayload) {
@@ -63,7 +69,7 @@ public class SearchProductServiceImpl implements SearchProductService {
         }
         ProductDetailsModel productDetails = productDetailsRepo.findBySkuId(requestPayload.skuId);
         if (productDetails.base64Image == null && productDetails.image_link != null) {
-            //SendToKafka
+            kafkaService.sendMessage(KAFKA_DOWNLOAD_IMAGE_TOPIC, String.valueOf(productDetails.entity_id));
 
             List<LinkedHashSet<ResponseProductDetails>> listOfProducts = new ArrayList<>();
             return new ResponsePayload()
