@@ -8,6 +8,7 @@ import com.RecommendAI.RecommendAI.Exceptions.ProductNotInDbException;
 import com.RecommendAI.RecommendAI.Model.*;
 import com.RecommendAI.RecommendAI.Repo.ProductDetailsRepo;
 import com.RecommendAI.RecommendAI.Repo.UsersRepo;
+import com.RecommendAI.RecommendAI.Services.CacheService;
 import com.RecommendAI.RecommendAI.Services.EventStreamingPlatformService;
 import com.RecommendAI.RecommendAI.Services.SearchProductService;
 import com.RecommendAI.RecommendAI.Services.VectorDatabaseService;
@@ -15,7 +16,6 @@ import io.weaviate.client.v1.filters.Operator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -26,9 +26,9 @@ import java.util.*;
 public class SearchProductServiceImpl implements SearchProductService {
     private final ProductDetailsRepo productDetailsRepo;
     private final UsersRepo usersRepo;
-    private final RedisTemplate template;
     private final VectorDatabaseService vectorDatabaseService;
     private final EventStreamingPlatformService kafkaService;
+    private final CacheService cacheService;
 
     private final String SUCCESS = "success";
     private final String FAILED = "failed";
@@ -47,7 +47,7 @@ public class SearchProductServiceImpl implements SearchProductService {
 
     @Override
     public ResponsePayload getSimilarProductOfDifferentDesigner(RequestPayload requestPayload) throws ImageNotInDbException, ProductNotInDbException {
-        LinkedHashSet<String> listOfSkuIdsFromRedis = getListOfSkuIdsFromRedis(requestPayload.skuId + "NO");
+        LinkedHashSet<String> listOfSkuIdsFromRedis = cacheService.getListOfSkuIdsFromCache(requestPayload.skuId + "NO");
         if (listOfSkuIdsFromRedis.size() > 0) {
             return this.responseBuilder(prepareProductDetails(listOfSkuIdsFromRedis, requestPayload)
                     , FROM_CACHE
@@ -55,7 +55,7 @@ public class SearchProductServiceImpl implements SearchProductService {
         }
         ProductDetailsModel productDetails = this.getProductDetails(requestPayload.skuId);
         LinkedHashSet<String> listOfSkuIdsFromWeaviateDb = this.listOfSimilarSkuIdsFromWeaviateDb(productDetails, false);
-        this.saveSkuIdsToRedis(listOfSkuIdsFromWeaviateDb, requestPayload.skuId + "NO");
+        cacheService.SetListOfSkuIdsToCache(listOfSkuIdsFromWeaviateDb,requestPayload.skuId + "NO");
         return this.responseBuilder(prepareProductDetails(listOfSkuIdsFromWeaviateDb, requestPayload)
                 , FROM_VDB
                 , SUCCESS);
@@ -63,7 +63,7 @@ public class SearchProductServiceImpl implements SearchProductService {
 
     @Override
     public ResponsePayload getSimilarProductOfSameDesigner(RequestPayload requestPayload) throws ImageNotInDbException, ProductNotInDbException {
-        LinkedHashSet<String> listOfSkuIdsFromRedis = getListOfSkuIdsFromRedis(requestPayload.skuId + "YES");
+        LinkedHashSet<String> listOfSkuIdsFromRedis = cacheService.getListOfSkuIdsFromCache(requestPayload.skuId + "NO");
         if (listOfSkuIdsFromRedis.size() > 0) {
             return this.responseBuilder(prepareProductDetails(listOfSkuIdsFromRedis, requestPayload)
                     , FROM_CACHE
@@ -71,13 +71,12 @@ public class SearchProductServiceImpl implements SearchProductService {
         }
         ProductDetailsModel productDetails = this.getProductDetails(requestPayload.skuId);
 
-        LinkedHashSet<String> listOfSkuIdsFromWeaviateDb = new LinkedHashSet<>();
-        listOfSkuIdsFromWeaviateDb = this.listOfSimilarSkuIdsFromWeaviateDb(productDetails, true);
+        LinkedHashSet<String> listOfSkuIdsFromWeaviateDb = this.listOfSimilarSkuIdsFromWeaviateDb(productDetails, true);
         if (listOfSkuIdsFromWeaviateDb.contains(requestPayload.skuId)) {
             listOfSkuIdsFromWeaviateDb.remove(requestPayload.skuId);
         }
         if (listOfSkuIdsFromWeaviateDb.size() > 0) {
-            this.saveSkuIdsToRedis(listOfSkuIdsFromWeaviateDb, requestPayload.skuId + "YES");
+            cacheService.SetListOfSkuIdsToCache(listOfSkuIdsFromWeaviateDb,requestPayload.skuId + "YES");
         }
         return this.responseBuilder(prepareProductDetails(listOfSkuIdsFromWeaviateDb, requestPayload)
                 , FROM_VDB
@@ -86,7 +85,7 @@ public class SearchProductServiceImpl implements SearchProductService {
 
     @Override
     public ResponsePayload getCompleteThelook(RequestPayload requestPayload) throws ImageNotInDbException, ProductNotInDbException {
-        LinkedHashSet<String> listOfSkuIdsFromRedis = getListOfSkuIdsFromRedis(requestPayload.skuId + "COMPLETE");
+        LinkedHashSet<String> listOfSkuIdsFromRedis = cacheService.getListOfSkuIdsFromCache(requestPayload.skuId + "NO");
         if (listOfSkuIdsFromRedis.size() > 0) {
             return this.responseBuilder(prepareProductDetails(listOfSkuIdsFromRedis, requestPayload)
                     , FROM_CACHE
@@ -94,23 +93,16 @@ public class SearchProductServiceImpl implements SearchProductService {
         }
         ProductDetailsModel productDetails = this.getProductDetails(requestPayload.skuId);
         ArrayList<String> randomFive = new ArrayList<>(JEWELLERY.subList(0, Math.min(5, JEWELLERY.size())));
-        LinkedHashSet<String> listOfSkuIdsFromWeaviateDb = vectorDatabaseService.getListOfSkuIdsFromWeaviateDb(productDetails, vectorDatabaseService.filterCompleteTheLookForCloths(randomFive), false, 3, Operator.Or);
+        LinkedHashSet<String> listOfSkuIdsFromWeaviateDb = vectorDatabaseService.getListOfSkuIdsFromWeaviateDb(productDetails, vectorDatabaseService.filterCompleteTheLookForCloths(randomFive), false, 6, Operator.Or);
         listOfSkuIdsFromWeaviateDb.remove(requestPayload.skuId);
         if (listOfSkuIdsFromWeaviateDb.size() > 15) {
             listOfSkuIdsFromWeaviateDb = new LinkedHashSet<>(new ArrayList<>(listOfSkuIdsFromWeaviateDb).subList(0, SKU_LENGTH_LIMIT));
         }
-        this.saveSkuIdsToRedis(listOfSkuIdsFromWeaviateDb, requestPayload.skuId + "COMPLETE");
+        cacheService.SetListOfSkuIdsToCache(listOfSkuIdsFromWeaviateDb,requestPayload.skuId + "COMPLETE");
 
         return this.responseBuilder(prepareProductDetails(listOfSkuIdsFromWeaviateDb, requestPayload)
                 , FROM_VDB
                 , SUCCESS);
-    }
-
-    @Override
-    public void clearRedisForASkuId(String sku) {
-        template.delete(sku + "YES");
-        template.delete(sku + "NO");
-        template.delete(sku + "COMPLETE");
     }
 
     @Override
@@ -195,7 +187,7 @@ public class SearchProductServiceImpl implements SearchProductService {
         }
         if (requestPayload.user_id != "") {
             Users alreadyAUser = usersRepo.getUsinguserId(UUID.fromString(requestPayload.user_id));
-            List<String> listOfSkus = listOfSkus = Arrays.stream(alreadyAUser.getSkuIds().get(0).split(",")).toList();
+            List<String> listOfSkus  = Arrays.stream(alreadyAUser.getSkuIds().get(0).split(",")).toList();
             processRecentlyViewedSkus(alreadyAUser, requestPayload.skuId, listOfSkus);
         } else {
             Users userSkuDetails = usersRepo.getUsingMadId(UUID.fromString(requestPayload.mad_uuid));
@@ -211,13 +203,6 @@ public class SearchProductServiceImpl implements SearchProductService {
         }
     }
 
-    private LinkedHashSet<String> getListOfSkuIdsFromRedis(String key) {
-        Object listOfSkus = template.opsForList().range(key, 0, -1);
-        LinkedHashSet<String> listOfSkuIdsFromRedis = new LinkedHashSet<>();
-        listOfSkuIdsFromRedis.addAll((ArrayList<String>) listOfSkus);
-        return listOfSkuIdsFromRedis;
-    }
-
     private LinkedHashSet<String> listOfSimilarSkuIdsFromWeaviateDb(ProductDetailsModel productDetails, boolean isSameBrand) {
         int limit = isSameBrand ? SKU_LENGTH_LIMIT : SKU_LENGTH_LIMIT_OTHER_BRAND;
         LinkedHashSet<String> listOfSkuIdsFromWeaviateDb = new LinkedHashSet<>();
@@ -231,11 +216,6 @@ public class SearchProductServiceImpl implements SearchProductService {
             listOfSkuIdsFromWeaviateDb = this.addSkuIdToExistingList(listOfSkuIdsFromWeaviateDb, listOfSkuIdsFromLevelThreeFilter);
         }
         return this.getSkuIfOfLength(listOfSkuIdsFromWeaviateDb);
-    }
-
-    private void saveSkuIdsToRedis(LinkedHashSet<String> listOfSkuIds, String key) {
-        template.delete(key);
-        template.opsForList().rightPushAll(key, listOfSkuIds.toArray(new String[0]));
     }
 
     private LinkedHashSet<String> addSkuIdToExistingList(LinkedHashSet<String> listOfSkuIds, LinkedHashSet<String> listOfSkuIdsFromDb) {

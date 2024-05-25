@@ -4,6 +4,7 @@ import com.RecommendAI.RecommendAI.Dto.ResponsePayload;
 import com.RecommendAI.RecommendAI.Dto.RequestDtos.RequestPayload;
 import com.RecommendAI.RecommendAI.Exceptions.ImageNotInDbException;
 import com.RecommendAI.RecommendAI.Exceptions.ProductNotInDbException;
+import com.RecommendAI.RecommendAI.Services.CacheService;
 import com.RecommendAI.RecommendAI.Services.SearchProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ImageRecommendationController {
     private final SearchProductService searchProductService;
+    private final CacheService cacheService;
 
     @CrossOrigin
     @PostMapping("/v1/fetch")
@@ -58,7 +60,7 @@ public class ImageRecommendationController {
     @CrossOrigin
     @GetMapping("/v1/clearSkuCache/{sku_id}")
     public ResponseEntity removeFromCache(@PathVariable String sku_id) {
-        searchProductService.clearRedisForASkuId(sku_id);
+        cacheService.clearSkuFromCache(sku_id);
         return new ResponseEntity<>("Success", HttpStatus.OK);
     }
 }

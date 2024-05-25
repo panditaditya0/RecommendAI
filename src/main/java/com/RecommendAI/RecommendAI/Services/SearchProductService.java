@@ -10,6 +10,5 @@ public interface SearchProductService {
     ResponsePayload getSimilarProductOfSameDesigner(RequestPayload requestPayload) throws ImageNotInDbException, ProductNotInDbException;
     ResponsePayload getCompleteThelook(RequestPayload requestPayload) throws ImageNotInDbException, ProductNotInDbException;
     ResponsePayload getRecentlyViewed(RequestPayload requestPayload);
-    void clearRedisForASkuId(String skuId);
     void saveSkuIdToRecentlyViewed(RequestPayload requestPayload);
 }
