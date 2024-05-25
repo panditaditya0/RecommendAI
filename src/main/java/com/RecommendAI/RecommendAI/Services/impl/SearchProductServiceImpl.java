@@ -3,6 +3,8 @@ package com.RecommendAI.RecommendAI.Services.impl;
 import com.RecommendAI.RecommendAI.Dto.RequestDtos.RequestPayload;
 import com.RecommendAI.RecommendAI.Dto.ResponsePayload;
 import com.RecommendAI.RecommendAI.Dto.ResponseProductDetails;
+import com.RecommendAI.RecommendAI.Exceptions.ImageNotInDbException;
+import com.RecommendAI.RecommendAI.Exceptions.ProductNotInDbException;
 import com.RecommendAI.RecommendAI.Model.*;
 import com.RecommendAI.RecommendAI.Repo.ProductDetailsRepo;
 import com.RecommendAI.RecommendAI.Repo.UsersRepo;
@@ -43,42 +45,31 @@ public class SearchProductServiceImpl implements SearchProductService {
     private String KAFKA_DOWNLOAD_IMAGE_TOPIC;
 
     @Override
-    public ResponsePayload getSimilarProductOfDifferentDesigner(RequestPayload requestPayload) {
+    public ResponsePayload getSimilarProductOfDifferentDesigner(RequestPayload requestPayload) throws ImageNotInDbException, ProductNotInDbException {
         LinkedHashSet<String> listOfSkuIdsFromRedis = getListOfSkuIdsFromRedis(requestPayload.skuId + "NO");
         if (listOfSkuIdsFromRedis.size() > 0) {
             return this.responseBuilder(prepareProductDetails(listOfSkuIdsFromRedis, requestPayload)
                     , FROM_CACHE
                     , SUCCESS);
         }
-        ProductDetailsModel productDetail = productDetailsRepo.findBySkuId(requestPayload.skuId);
-        LinkedHashSet<String> listOfSkuIdsFromWeaviateDb = this.listOfSimilarSkuIdsFromWeaviateDb(productDetail, false);
+        ProductDetailsModel productDetails = this.getProductDetails(requestPayload.skuId);
+        LinkedHashSet<String> listOfSkuIdsFromWeaviateDb = this.listOfSimilarSkuIdsFromWeaviateDb(productDetails, false);
         this.saveSkuIdsToRedis(listOfSkuIdsFromWeaviateDb, requestPayload.skuId + "NO");
-
         return this.responseBuilder(prepareProductDetails(listOfSkuIdsFromWeaviateDb, requestPayload)
                 , FROM_VDB
                 , SUCCESS);
     }
 
     @Override
-    public ResponsePayload getSimilarProductOfSameDesigner(RequestPayload requestPayload) {
+    public ResponsePayload getSimilarProductOfSameDesigner(RequestPayload requestPayload) throws ImageNotInDbException, ProductNotInDbException {
         LinkedHashSet<String> listOfSkuIdsFromRedis = getListOfSkuIdsFromRedis(requestPayload.skuId + "YES");
         if (listOfSkuIdsFromRedis.size() > 0) {
             return this.responseBuilder(prepareProductDetails(listOfSkuIdsFromRedis, requestPayload)
                     , FROM_CACHE
                     , SUCCESS);
         }
-        ProductDetailsModel productDetails = productDetailsRepo.findBySkuId(requestPayload.skuId);
-        if (productDetails.base64Image == null && productDetails.image_link != null) {
-            kafkaService.sendMessage(KAFKA_DOWNLOAD_IMAGE_TOPIC, String.valueOf(productDetails.entity_id));
+        ProductDetailsModel productDetails = this.getProductDetails(requestPayload.skuId);
 
-            List<LinkedHashSet<ResponseProductDetails>> listOfProducts = new ArrayList<>();
-            return new ResponsePayload()
-                    .builder()
-                    .message(IMAGE_NOT_IN_DB)
-                    .data(listOfProducts)
-                    .status(FAILED)
-                    .build();
-        }
         LinkedHashSet<String> listOfSkuIdsFromWeaviateDb = new LinkedHashSet<>();
         listOfSkuIdsFromWeaviateDb = this.listOfSimilarSkuIdsFromWeaviateDb(productDetails, true);
         if (listOfSkuIdsFromWeaviateDb.contains(requestPayload.skuId)) {
@@ -93,14 +84,14 @@ public class SearchProductServiceImpl implements SearchProductService {
     }
 
     @Override
-    public ResponsePayload getCompleteThelook(RequestPayload requestPayload) {
+    public ResponsePayload getCompleteThelook(RequestPayload requestPayload) throws ImageNotInDbException, ProductNotInDbException {
         LinkedHashSet<String> listOfSkuIdsFromRedis = getListOfSkuIdsFromRedis(requestPayload.skuId + "COMPLETE");
         if (listOfSkuIdsFromRedis.size() > 0) {
             return this.responseBuilder(prepareProductDetails(listOfSkuIdsFromRedis, requestPayload)
                     , FROM_CACHE
                     , SUCCESS);
         }
-        ProductDetailsModel productDetails = productDetailsRepo.findBySkuId(requestPayload.skuId);
+        ProductDetailsModel productDetails = this.getProductDetails(requestPayload.skuId);
         ArrayList<String> randomFive = new ArrayList<>(JEWELLERY.subList(0, Math.min(5, JEWELLERY.size())));
         LinkedHashSet<String> listOfSkuIdsFromWeaviateDb = vectorDatabaseService.getListOfSkuIdsFromWeaviateDb(productDetails, vectorDatabaseService.filterCompleteTheLookForCloths(randomFive), false, 3, Operator.Or);
         listOfSkuIdsFromWeaviateDb.remove(requestPayload.skuId);
@@ -293,5 +284,17 @@ public class SearchProductServiceImpl implements SearchProductService {
                 .data(listOfProducts2)
                 .status(status)
                 .build();
+    }
+
+    private ProductDetailsModel getProductDetails(String skuId) throws ProductNotInDbException, ImageNotInDbException {
+        ProductDetailsModel productDetails = productDetailsRepo.findBySkuId(skuId);
+        if (productDetails == null) {
+            throw new ProductNotInDbException("Image not present in Database");
+        }
+        if (productDetails.base64Image == null && productDetails.image_link != null) {
+            kafkaService.sendMessage(KAFKA_DOWNLOAD_IMAGE_TOPIC, String.valueOf(productDetails.entity_id));
+            throw new ImageNotInDbException("Image not present in Database");
+        }
+        return productDetails;
     }
 }

@@ -1,7 +1,6 @@
 package com.RecommendAI.RecommendAI.Dto;
 
 import lombok.*;
-import org.checkerframework.checker.units.qual.N;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -13,8 +12,8 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ResponsePayload {
-    public String status;
-    public List<LinkedHashSet<ResponseProductDetails>> data;
-    public String message;
-    public boolean trending = false;
+    private String status;
+    private List<LinkedHashSet<ResponseProductDetails>> data;
+    private String message;
+    private boolean trending = false;
 }

@@ -2,6 +2,8 @@ package com.RecommendAI.RecommendAI.Controllers;
 
 import com.RecommendAI.RecommendAI.Dto.ResponsePayload;
 import com.RecommendAI.RecommendAI.Dto.RequestDtos.RequestPayload;
+import com.RecommendAI.RecommendAI.Exceptions.ImageNotInDbException;
+import com.RecommendAI.RecommendAI.Exceptions.ProductNotInDbException;
 import com.RecommendAI.RecommendAI.Services.SearchProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,8 +46,12 @@ public class ImageRecommendationController {
                         .getRecentlyViewed(requestPayload);
             }
             return new ResponseEntity<>(responsePayloads, HttpStatus.OK);
+        } catch (ImageNotInDbException notInDbException) {
+            return new ResponseEntity<>(notInDbException.getMessage(), HttpStatus.NOT_FOUND);
+        } catch (ProductNotInDbException ex) {
+            return new ResponseEntity<>(ex.getMessage(), HttpStatus.NO_CONTENT);
         } catch (Exception ex) {
-            return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
