@@ -32,7 +32,8 @@ public class SearchProductServiceImpl implements SearchProductService {
 
     private final String SUCCESS = "success";
     private final String FAILED = "failed";
-    private final String IMAGE_NOT_IN_DB = "Image not in db";
+    private final String IMAGE_NOT_IN_DB = "Image not present in Database";
+    private final String PRODUCT_NOT_IN_DB = "Product not present in Database";
     private final String FROM_CACHE = "From Cache";
     private final String FROM_VDB = "From vDb";
     private final int SKU_LENGTH_LIMIT = 40;
@@ -122,8 +123,9 @@ public class SearchProductServiceImpl implements SearchProductService {
             Users alreadyAUser = usersRepo.getUsinguserId(UUID.fromString(requestPayload.user_id));
             listOfSkus = new LinkedHashSet<>(Arrays.stream(alreadyAUser.getSkuIds().get(0).split(",")).toList());
         } else {
-            Users alreadyAUser = usersRepo.getUsingMadId(UUID.fromString(requestPayload.mad_uuid));
-            listOfSkus = new LinkedHashSet<>(alreadyAUser.getSkuIds());
+            Users alreadyAMadUser = usersRepo.getUsingMadId(UUID.fromString(requestPayload.mad_uuid));
+            listOfSkus = new LinkedHashSet<>(alreadyAMadUser.getSkuIds());
+            listOfSkus.remove(requestPayload.skuId);
         }
 
         return this.responseBuilder(prepareProductDetails(listOfSkus, requestPayload)
@@ -289,11 +291,11 @@ public class SearchProductServiceImpl implements SearchProductService {
     private ProductDetailsModel getProductDetails(String skuId) throws ProductNotInDbException, ImageNotInDbException {
         ProductDetailsModel productDetails = productDetailsRepo.findBySkuId(skuId);
         if (productDetails == null) {
-            throw new ProductNotInDbException("Image not present in Database");
+            throw new ProductNotInDbException(PRODUCT_NOT_IN_DB);
         }
         if (productDetails.base64Image == null && productDetails.image_link != null) {
             kafkaService.sendMessage(KAFKA_DOWNLOAD_IMAGE_TOPIC, String.valueOf(productDetails.entity_id));
-            throw new ImageNotInDbException("Image not present in Database");
+            throw new ImageNotInDbException(IMAGE_NOT_IN_DB);
         }
         return productDetails;
     }
