@@ -1,4 +1,4 @@
-package com.RecommendAI.RecommendAI.Dto;
+package com.RecommendAI.RecommendAI.Dto.RequestDtos;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
