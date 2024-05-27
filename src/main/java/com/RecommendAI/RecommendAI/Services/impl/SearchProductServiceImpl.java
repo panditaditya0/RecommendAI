@@ -63,7 +63,7 @@ public class SearchProductServiceImpl implements SearchProductService {
 
     @Override
     public ResponsePayload getSimilarProductOfSameDesigner(RequestPayload requestPayload) throws ImageNotInDbException, ProductNotInDbException {
-        LinkedHashSet<String> listOfSkuIdsFromRedis = cacheService.getListOfSkuIdsFromCache(requestPayload.skuId + "NO");
+        LinkedHashSet<String> listOfSkuIdsFromRedis = cacheService.getListOfSkuIdsFromCache(requestPayload.skuId +"YES");
         if (listOfSkuIdsFromRedis.size() > 0) {
             return this.responseBuilder(prepareProductDetails(listOfSkuIdsFromRedis, requestPayload)
                     , FROM_CACHE
