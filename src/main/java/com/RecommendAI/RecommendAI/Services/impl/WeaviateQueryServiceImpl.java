@@ -36,7 +36,7 @@ public class WeaviateQueryServiceImpl implements VectorDatabaseService {
                 .build();
 
         Result<GraphQLResponse> result = client.graphQL().get()
-                .withClassName("TestImg18")
+                .withClassName("TestImg19")
                 .withNearImage(base64Image)
                 .withWhere(whereArgument)
                 .withFields(Field.builder().name("sku_id").build())

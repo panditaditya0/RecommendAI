@@ -43,6 +43,8 @@ public class ProductDetailsModel {
     public LocalDateTime updated_at;
     @Column(name = "base_64_image")
     public String base64Image;
+    @Column(name = "base64image_original")
+    public String base64Image_original;
     public String categories;
     public String in_stock;
     @JdbcTypeCode(SqlTypes.ARRAY)
