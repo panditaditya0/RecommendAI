@@ -36,7 +36,7 @@ public class SearchProductServiceImpl implements SearchProductService {
     private final String PRODUCT_NOT_IN_DB = "Product not present in Database";
     private final String FROM_CACHE = "From Cache";
     private final String FROM_VDB = "From vDb";
-    private final int SKU_LENGTH_LIMIT = 40;
+    private final int SKU_LENGTH_LIMIT = 100;
     private final int SKU_LENGTH_LIMIT_OTHER_BRAND = 100;
     private final List<String> JEWELLERY = new ArrayList<>(List.of("earrings", "cuffs", "bracelets", "necklaces", "rings", "bangles"
             , "pendants", "brooches", "hand harness", "earcuffs", "head pieces", "body chains", "arm bands", "anklets", "nose rings"
