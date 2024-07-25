@@ -42,7 +42,8 @@ public class SearchProductServiceImpl implements SearchProductService {
             , "pendants", "brooches", "hand harness", "earcuffs", "head pieces", "body chains", "arm bands", "anklets", "nose rings"
             , "maangtikas", "kaleeras", "cufflinks"));
 
-    private final double PRICE_RANGE_PERCENTAGE = 20;
+    @Value("${PRICE_RANGE_PERCENTAGE}")
+    private double PRICE_RANGE_PERCENTAGE;
 
     @Value("${KAFKA_DOWNLOAD_IMAGE_TOPIC}")
     private String KAFKA_DOWNLOAD_IMAGE_TOPIC;
@@ -59,7 +60,12 @@ public class SearchProductServiceImpl implements SearchProductService {
         LinkedHashSet<String> listOfSkuIdsFromWeaviateDb = this.listOfSimilarSkuIdsFromWeaviateDb(productDetails, false);
         cacheService.SetListOfSkuIdsToCache(listOfSkuIdsFromWeaviateDb,requestPayload.skuId + "NO");
         LinkedHashSet<ResponseProductDetails> listOfAllSimilarProducts = prepareProductDetails(listOfSkuIdsFromWeaviateDb, requestPayload);
-        LinkedHashSet<ResponseProductDetails> sorted = new LinkedHashSet<>(  sortProductsByPriceRange(productDetails, listOfAllSimilarProducts));
+        if (PRICE_RANGE_PERCENTAGE == 0) {
+            return this.responseBuilder(listOfAllSimilarProducts
+                    , FROM_VDB
+                    , SUCCESS);
+        }
+        LinkedHashSet<ResponseProductDetails> sorted = new LinkedHashSet<>(sortProductsByPriceRange(productDetails, listOfAllSimilarProducts));
         return this.responseBuilder(sorted
                 , FROM_VDB
                 , SUCCESS);
