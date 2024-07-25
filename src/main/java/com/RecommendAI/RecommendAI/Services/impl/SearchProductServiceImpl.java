@@ -123,6 +123,11 @@ public class SearchProductServiceImpl implements SearchProductService {
         if (listOfSkuIdsFromWeaviateDb.size() > 15) {
             listOfSkuIdsFromWeaviateDb = new LinkedHashSet<>(new ArrayList<>(listOfSkuIdsFromWeaviateDb).subList(0, SKU_LENGTH_LIMIT));
         }
+
+        if (listOfSkuIdsFromWeaviateDb.isEmpty()){
+           return responseBuilder(new LinkedHashSet<ResponseProductDetails>(), FROM_VDB, "No products found");
+        }
+
         cacheService.SetListOfSkuIdsToCache(listOfSkuIdsFromWeaviateDb,requestPayload.skuId + "COMPLETE");
 
         return this.responseBuilder(prepareProductDetails(listOfSkuIdsFromWeaviateDb, requestPayload)
