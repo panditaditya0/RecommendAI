@@ -37,7 +37,7 @@ public class SearchProductServiceImpl implements SearchProductService {
     private final String FROM_CACHE = "From Cache";
     private final String FROM_VDB = "From vDb";
     private final int SKU_LENGTH_LIMIT = 100;
-    private final int SKU_LENGTH_LIMIT_OTHER_BRAND = 100;
+    private final int SKU_LENGTH_LIMIT_OTHER_BRAND = 50;
     private final List<String> JEWELLERY = new ArrayList<>(List.of("earrings", "cuffs", "bracelets", "necklaces", "rings", "bangles"
             , "pendants", "brooches", "hand harness", "earcuffs", "head pieces", "body chains", "arm bands", "anklets", "nose rings"
             , "maangtikas", "kaleeras", "cufflinks"));
@@ -51,7 +51,7 @@ public class SearchProductServiceImpl implements SearchProductService {
     @Override
     public ResponsePayload getSimilarProductOfDifferentDesigner(RequestPayload requestPayload) throws ImageNotInDbException, ProductNotInDbException {
         LinkedHashSet<String> listOfSkuIdsFromRedis = cacheService.getListOfSkuIdsFromCache(requestPayload.skuId + "NO");
-        if (listOfSkuIdsFromRedis.size() > 0) {
+        if (!listOfSkuIdsFromRedis.isEmpty()) {
             return this.responseBuilder(prepareProductDetails(listOfSkuIdsFromRedis, requestPayload)
                     , FROM_CACHE
                     , SUCCESS);
@@ -60,35 +60,30 @@ public class SearchProductServiceImpl implements SearchProductService {
         LinkedHashSet<String> listOfSkuIdsFromWeaviateDb = this.listOfSimilarSkuIdsFromWeaviateDb(productDetails, false);
         cacheService.SetListOfSkuIdsToCache(listOfSkuIdsFromWeaviateDb,requestPayload.skuId + "NO");
         LinkedHashSet<ResponseProductDetails> listOfAllSimilarProducts = prepareProductDetails(listOfSkuIdsFromWeaviateDb, requestPayload);
-        if (PRICE_RANGE_PERCENTAGE == 0) {
-            return this.responseBuilder(listOfAllSimilarProducts
-                    , FROM_VDB
-                    , SUCCESS);
-        }
-        LinkedHashSet<ResponseProductDetails> sorted = new LinkedHashSet<>(sortProductsByPriceRange(productDetails, listOfAllSimilarProducts));
-        return this.responseBuilder(sorted
+        return this.responseBuilder(listOfAllSimilarProducts
                 , FROM_VDB
                 , SUCCESS);
+
     }
 
-    private LinkedHashSet<ResponseProductDetails> sortProductsByPriceRange(ProductDetailsModel productDetails, LinkedHashSet<ResponseProductDetails> listOfAllSimilarProducts) {
-        double minPrice = productDetails.getPrice_in() * (1 - PRICE_RANGE_PERCENTAGE /100);
-        double maxPrice = productDetails.getPrice_in() *  (1 + PRICE_RANGE_PERCENTAGE/100);
-        String color = productDetails.getColor();
-        LinkedHashSet<ResponseProductDetails> sortedList = new LinkedHashSet<>();
-        LinkedHashSet<ResponseProductDetails> sortedListOutIfRange = new LinkedHashSet<>();
-        Iterator it = listOfAllSimilarProducts.iterator();
-        while (it.hasNext()) {
-            ResponseProductDetails productDetail = (ResponseProductDetails) it.next();
-            if(isWithinRange(productDetail.getPrice(), minPrice, maxPrice) && color == productDetail.getColor()){
-                sortedList.add(productDetail);
-            } else {
-                sortedListOutIfRange.add(productDetail);
-            }
-        }
-        sortedList.addAll(sortedListOutIfRange);
-        return sortedList;
-    }
+//    private LinkedHashSet<ResponseProductDetails> sortProductsByPriceRange(ProductDetailsModel productDetails, LinkedHashSet<ResponseProductDetails> listOfAllSimilarProducts) {
+//        double minPrice = productDetails.getPrice_in() * (1 - PRICE_RANGE_PERCENTAGE /100);
+//        double maxPrice = productDetails.getPrice_in() *  (1 + PRICE_RANGE_PERCENTAGE/100);
+//        String color = productDetails.getColor();
+//        LinkedHashSet<ResponseProductDetails> sortedList = new LinkedHashSet<>();
+//        LinkedHashSet<ResponseProductDetails> sortedListOutIfRange = new LinkedHashSet<>();
+//        Iterator it = listOfAllSimilarProducts.iterator();
+//        while (it.hasNext()) {
+//            ResponseProductDetails productDetail = (ResponseProductDetails) it.next();
+//            if(isWithinRange(productDetail.getPrice(), minPrice, maxPrice) && color == productDetail.getColor()){
+//                sortedList.add(productDetail);
+//            } else {
+//                sortedListOutIfRange.add(productDetail);
+//            }
+//        }
+//        sortedList.addAll(sortedListOutIfRange);
+//        return sortedList;
+//    }
 
     @Override
     public ResponsePayload getSimilarProductOfSameDesigner(RequestPayload requestPayload) throws ImageNotInDbException, ProductNotInDbException {
@@ -246,12 +241,21 @@ public class SearchProductServiceImpl implements SearchProductService {
         int limit = isSameBrand ? SKU_LENGTH_LIMIT : SKU_LENGTH_LIMIT_OTHER_BRAND;
         LinkedHashSet<String> listOfSkuIdsFromWeaviateDb = new LinkedHashSet<>();
         listOfSkuIdsFromWeaviateDb = vectorDatabaseService.getListOfSkuIdsFromWeaviateDb(productDetails, vectorDatabaseService.filterLevelOne(productDetails, isSameBrand), isSameBrand, limit, Operator.And);
+        if(!isSameBrand && !listOfSkuIdsFromWeaviateDb.isEmpty()){
+            listOfSkuIdsFromWeaviateDb = sortAsPrPrice(productDetails,listOfSkuIdsFromWeaviateDb);
+        }
         if (listOfSkuIdsFromWeaviateDb.size() < SKU_LENGTH_LIMIT) {
             LinkedHashSet<String> listOfSkuIdsFromLevelTwoFilter = vectorDatabaseService.getListOfSkuIdsFromWeaviateDb(productDetails, vectorDatabaseService.filterLevelTwo(productDetails, isSameBrand), isSameBrand, limit, Operator.And);
+            if(!isSameBrand && !listOfSkuIdsFromLevelTwoFilter.isEmpty()){
+                listOfSkuIdsFromLevelTwoFilter = sortAsPrPrice(productDetails,listOfSkuIdsFromLevelTwoFilter);
+            }
             listOfSkuIdsFromWeaviateDb = this.addSkuIdToExistingList(listOfSkuIdsFromWeaviateDb, listOfSkuIdsFromLevelTwoFilter);
         }
         if (listOfSkuIdsFromWeaviateDb.size() < SKU_LENGTH_LIMIT) {
             LinkedHashSet<String> listOfSkuIdsFromLevelThreeFilter = vectorDatabaseService.getListOfSkuIdsFromWeaviateDb(productDetails, vectorDatabaseService.filterLevelThree(productDetails, isSameBrand), isSameBrand, limit, Operator.And);
+            if(!isSameBrand && !listOfSkuIdsFromLevelThreeFilter.isEmpty()){
+                listOfSkuIdsFromLevelThreeFilter = sortAsPrPrice(productDetails,listOfSkuIdsFromLevelThreeFilter);
+            }
             listOfSkuIdsFromWeaviateDb = this.addSkuIdToExistingList(listOfSkuIdsFromWeaviateDb, listOfSkuIdsFromLevelThreeFilter);
         }
         return this.getSkuIfOfLength(listOfSkuIdsFromWeaviateDb);
@@ -317,5 +321,24 @@ public class SearchProductServiceImpl implements SearchProductService {
             throw new ImageNotInDbException(IMAGE_NOT_IN_DB);
         }
         return productDetails;
+    }
+
+    private LinkedHashSet<String> sortAsPrPrice(ProductDetailsModel productDetails, LinkedHashSet<String> skus){
+        double minPrice = productDetails.getPrice_in() * (1 - PRICE_RANGE_PERCENTAGE /100);
+        double maxPrice = productDetails.getPrice_in() *  (1 + PRICE_RANGE_PERCENTAGE/100);
+        String color = productDetails.getColor();
+        LinkedHashSet<String> sortedList = new LinkedHashSet<>();
+        LinkedHashSet<String> sortedListOutIfRange = new LinkedHashSet<>();
+        ArrayList<ProductDetailsModel> listOfProducts = productDetailsRepo.findByListOfIds(skus);
+        Iterator it = listOfProducts.iterator();
+        while (it.hasNext()) {
+            ProductDetailsModel productDetail = (ProductDetailsModel) it.next();
+            if(isWithinRange(productDetail.getPrice_in(), minPrice, maxPrice)){
+                sortedList.add(productDetail.getSku_id());
+            } else {
+                sortedListOutIfRange.add(productDetail.getSku_id());
+            }
+        }
+        return sortedList;
     }
 }
