@@ -10,6 +10,7 @@ import io.weaviate.client.v1.filters.Operator;
 import io.weaviate.client.v1.filters.WhereFilter;
 import io.weaviate.client.v1.graphql.model.GraphQLResponse;
 import io.weaviate.client.v1.graphql.query.argument.NearImageArgument;
+import io.weaviate.client.v1.graphql.query.argument.NearObjectArgument;
 import io.weaviate.client.v1.graphql.query.argument.WhereArgument;
 import io.weaviate.client.v1.graphql.query.fields.Field;
 import lombok.RequiredArgsConstructor;
@@ -24,8 +25,10 @@ public class WeaviateQueryServiceImpl implements VectorDatabaseService {
     @Override
     public LinkedHashSet<String> getListOfSkuIdsFromWeaviateDb(ProductDetailsModel productDetailsModel, WhereFilter[] whereFilters, boolean isSameBrand, int limit, String operator) {
             WeaviateClient client = weaviateConfig.weaviateClientMethod();
-        NearImageArgument base64Image = NearImageArgument.builder().image(productDetailsModel.base64Image_original).build();
-
+//        NearImageArgument base64Image = NearImageArgument.builder().image(productDetailsModel.base64Image_original).build();
+        NearObjectArgument nearObject = client.graphQL().arguments().nearObjectArgBuilder()
+                .id(productDetailsModel.getUuid())
+                .build();
         WhereFilter allFilters = WhereFilter.builder()
                 .operator(operator)
                 .operands(whereFilters)
@@ -37,12 +40,11 @@ public class WeaviateQueryServiceImpl implements VectorDatabaseService {
 
         Result<GraphQLResponse> result = client.graphQL().get()
                 .withClassName("TestImg19")
-                .withNearImage(base64Image)
+                .withNearObject(nearObject)
                 .withWhere(whereArgument)
                 .withFields(Field.builder().name("sku_id").build())
                 .withLimit(limit+1)
                 .run();
-
         String jsonString = new GsonBuilder()
                 .setPrettyPrinting()
                 .create()
