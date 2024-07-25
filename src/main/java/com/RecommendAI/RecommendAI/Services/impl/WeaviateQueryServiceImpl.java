@@ -24,7 +24,7 @@ public class WeaviateQueryServiceImpl implements VectorDatabaseService {
     @Override
     public LinkedHashSet<String> getListOfSkuIdsFromWeaviateDb(ProductDetailsModel productDetailsModel, WhereFilter[] whereFilters, boolean isSameBrand, int limit, String operator) {
             WeaviateClient client = weaviateConfig.weaviateClientMethod();
-        NearImageArgument base64Image = NearImageArgument.builder().image(productDetailsModel.base64Image).build();
+        NearImageArgument base64Image = NearImageArgument.builder().image(productDetailsModel.base64Image_original).build();
 
         WhereFilter allFilters = WhereFilter.builder()
                 .operator(operator)
@@ -58,7 +58,7 @@ public class WeaviateQueryServiceImpl implements VectorDatabaseService {
                 .parse(jsonString)
                 .getAsJsonObject()
                 .getAsJsonObject("Get")
-                .getAsJsonArray("TestImg18");
+                .getAsJsonArray("TestImg19");
 
         LinkedHashSet<String> skuList = new LinkedHashSet<>();
         String substring = productDetailsModel.sku_id.substring(0, 4);

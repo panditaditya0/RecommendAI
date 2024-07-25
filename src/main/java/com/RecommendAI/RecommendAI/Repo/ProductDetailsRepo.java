@@ -14,6 +14,7 @@ public interface ProductDetailsRepo extends JpaRepository<ProductDetailsModel, L
 
 
     @Query(value = "SELECT NULL AS base_64_image,\n" +
+            " NULL AS base64image_original,\n" +
             "       discount,\n" +
             "       discount_in,\n" +
             "       discount_row,\n" +

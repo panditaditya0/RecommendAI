@@ -56,9 +56,34 @@ public class SearchProductServiceImpl implements SearchProductService {
         ProductDetailsModel productDetails = this.getProductDetails(requestPayload.skuId);
         LinkedHashSet<String> listOfSkuIdsFromWeaviateDb = this.listOfSimilarSkuIdsFromWeaviateDb(productDetails, false);
         cacheService.SetListOfSkuIdsToCache(listOfSkuIdsFromWeaviateDb,requestPayload.skuId + "NO");
-        return this.responseBuilder(prepareProductDetails(listOfSkuIdsFromWeaviateDb, requestPayload)
+        LinkedHashSet<ResponseProductDetails> listOfAllSimilarProducts = prepareProductDetails(listOfSkuIdsFromWeaviateDb, requestPayload);
+        LinkedHashSet<ResponseProductDetails> sorted = new LinkedHashSet<>(  sortProductsByPriceRange(productDetails, listOfAllSimilarProducts));
+        return this.responseBuilder(sorted
                 , FROM_VDB
                 , SUCCESS);
+    }
+
+    private List<ResponseProductDetails> sortProductsByPriceRange(ProductDetailsModel productDetails, LinkedHashSet<ResponseProductDetails> listOfAllSimilarProducts) {
+        double minPrice = productDetails.getPrice_in() * 0.8;
+        double maxPrice = productDetails.getPrice_in() * 1.2;
+        List<ResponseProductDetails> priceDtos = new ArrayList<>(listOfAllSimilarProducts);
+        Collections.sort(priceDtos, new Comparator<ResponseProductDetails>() {
+            @Override
+            public int compare(ResponseProductDetails p1, ResponseProductDetails p2) {
+                boolean p1InRange = isWithinRange(p1.getPrice(), minPrice, maxPrice);
+                boolean p2InRange = isWithinRange(p2.getPrice(), minPrice, maxPrice);
+
+                if (p1InRange && !p2InRange) {
+                    return -1;
+                } else if (!p1InRange && p2InRange) {
+                    return 1;
+                } else {
+                    return Double.compare(p1.getPrice(), p2.getPrice());
+                }
+            }
+        });
+
+        return priceDtos;
     }
 
     @Override
@@ -179,6 +204,10 @@ public class SearchProductServiceImpl implements SearchProductService {
             }
         }
         return responsePayloads;
+    }
+
+    private static boolean isWithinRange(double price, double minPrice, double maxPrice) {
+        return price >= minPrice && price <= maxPrice;
     }
 
     public void saveSkuIdToRecentlyViewed(RequestPayload requestPayload) {

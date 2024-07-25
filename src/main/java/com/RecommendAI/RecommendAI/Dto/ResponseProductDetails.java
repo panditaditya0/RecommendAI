@@ -2,8 +2,12 @@ package com.RecommendAI.RecommendAI.Dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
 
 @Builder
+@Getter
+@Setter
 public class ResponseProductDetails {
     @JsonProperty("sku_id")
     public String skuId;
