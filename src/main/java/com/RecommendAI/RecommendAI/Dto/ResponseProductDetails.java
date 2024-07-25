@@ -1,5 +1,6 @@
 package com.RecommendAI.RecommendAI.Dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
@@ -31,4 +32,6 @@ public class ResponseProductDetails {
     public double salePrice;
     @JsonProperty("price")
     public double price;
+    @JsonIgnore
+    public String color;
 }

@@ -63,27 +63,23 @@ public class SearchProductServiceImpl implements SearchProductService {
                 , SUCCESS);
     }
 
-    private List<ResponseProductDetails> sortProductsByPriceRange(ProductDetailsModel productDetails, LinkedHashSet<ResponseProductDetails> listOfAllSimilarProducts) {
-        double minPrice = productDetails.getPrice_in() * 0.8;
-        double maxPrice = productDetails.getPrice_in() * 1.2;
-        List<ResponseProductDetails> priceDtos = new ArrayList<>(listOfAllSimilarProducts);
-        Collections.sort(priceDtos, new Comparator<ResponseProductDetails>() {
-            @Override
-            public int compare(ResponseProductDetails p1, ResponseProductDetails p2) {
-                boolean p1InRange = isWithinRange(p1.getPrice(), minPrice, maxPrice);
-                boolean p2InRange = isWithinRange(p2.getPrice(), minPrice, maxPrice);
-
-                if (p1InRange && !p2InRange) {
-                    return -1;
-                } else if (!p1InRange && p2InRange) {
-                    return 1;
-                } else {
-                    return Double.compare(p1.getPrice(), p2.getPrice());
-                }
+    private LinkedHashSet<ResponseProductDetails> sortProductsByPriceRange(ProductDetailsModel productDetails, LinkedHashSet<ResponseProductDetails> listOfAllSimilarProducts) {
+        double minPrice = productDetails.getPrice_in() * 0.1;
+        double maxPrice = productDetails.getPrice_in() * 1.1;
+        String color = productDetails.getColor();
+        LinkedHashSet<ResponseProductDetails> sortedList = new LinkedHashSet<>();
+        LinkedHashSet<ResponseProductDetails> sortedListOutIfRange = new LinkedHashSet<>();
+        Iterator it = listOfAllSimilarProducts.iterator();
+        while (it.hasNext()) {
+            ResponseProductDetails productDetail = (ResponseProductDetails) it.next();
+            if(isWithinRange(productDetail.getPrice(), minPrice, maxPrice) && color == productDetail.getColor()){
+                sortedList.add(productDetail);
+            } else {
+                sortedListOutIfRange.add(productDetail);
             }
-        });
-
-        return priceDtos;
+        }
+        sortedList.addAll(sortedListOutIfRange);
+        return sortedList;
     }
 
     @Override
@@ -205,6 +201,7 @@ public class SearchProductServiceImpl implements SearchProductService {
                         .link(aProductDetailsModel.link)
                         .salePrice(sale_price * requestPayload.extra_params.exchange_rate)
                         .price(price * requestPayload.extra_params.exchange_rate)
+                        .color(aProductDetailsModel.color)
                         .build());
             }
         }

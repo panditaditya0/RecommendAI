@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -60,7 +61,22 @@ public class ImageRecommendationController {
     @CrossOrigin
     @GetMapping("/v1/clearSkuCache/{sku_id}")
     public ResponseEntity removeFromCache(@PathVariable String sku_id) {
-        cacheService.clearSkuFromCache(sku_id);
-        return new ResponseEntity<>("Success", HttpStatus.OK);
+        try {
+            cacheService.clearSkuFromCache(sku_id);
+            return new ResponseEntity<>("Success", HttpStatus.OK);
+        } catch (Exception ex) {
+            return new ResponseEntity<>(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @CrossOrigin
+    @GetMapping("/v1/clearAllSku")
+    public ResponseEntity clearAllSku() {
+        try {
+            cacheService.clearAllCache();
+            return new ResponseEntity<>("Success", HttpStatus.OK);
+        } catch (Exception ex) {
+            return new ResponseEntity<>(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }

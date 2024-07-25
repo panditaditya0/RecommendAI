@@ -16,10 +16,24 @@ public class RedisCacheServiceImpl implements CacheService {
     private final RedisTemplate template;
 
     @Override
-    public void clearSkuFromCache(String sku) {
-        template.delete(sku + "YES");
-        template.delete(sku + "NO");
-        template.delete(sku + "COMPLETE");
+    public boolean clearSkuFromCache(String sku) {
+        try{
+            template.delete(sku + "YES");
+            template.delete(sku + "NO");
+            template.delete(sku + "COMPLETE");
+        } catch (Exception ex){
+        }
+        return true;
+    }
+
+    @Override
+    public boolean clearAllCache() {
+        try{
+            template.getConnectionFactory().getConnection().flushDb();
+            return true;
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     @Override
