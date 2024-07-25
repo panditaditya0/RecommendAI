@@ -42,6 +42,8 @@ public class SearchProductServiceImpl implements SearchProductService {
             , "pendants", "brooches", "hand harness", "earcuffs", "head pieces", "body chains", "arm bands", "anklets", "nose rings"
             , "maangtikas", "kaleeras", "cufflinks"));
 
+    private final double PRICE_RANGE_PERCENTAGE = 20;
+
     @Value("${KAFKA_DOWNLOAD_IMAGE_TOPIC}")
     private String KAFKA_DOWNLOAD_IMAGE_TOPIC;
 
@@ -64,8 +66,8 @@ public class SearchProductServiceImpl implements SearchProductService {
     }
 
     private LinkedHashSet<ResponseProductDetails> sortProductsByPriceRange(ProductDetailsModel productDetails, LinkedHashSet<ResponseProductDetails> listOfAllSimilarProducts) {
-        double minPrice = productDetails.getPrice_in() * 0.1;
-        double maxPrice = productDetails.getPrice_in() * 1.1;
+        double minPrice = productDetails.getPrice_in() * (1 - PRICE_RANGE_PERCENTAGE /100);
+        double maxPrice = productDetails.getPrice_in() *  (1 + PRICE_RANGE_PERCENTAGE/100);
         String color = productDetails.getColor();
         LinkedHashSet<ResponseProductDetails> sortedList = new LinkedHashSet<>();
         LinkedHashSet<ResponseProductDetails> sortedListOutIfRange = new LinkedHashSet<>();
