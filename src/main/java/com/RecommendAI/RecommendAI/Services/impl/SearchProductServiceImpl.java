@@ -326,17 +326,22 @@ public class SearchProductServiceImpl implements SearchProductService {
     private LinkedHashSet<String> sortAsPrPrice(ProductDetailsModel productDetails, LinkedHashSet<String> skus){
         double minPrice = productDetails.getPrice_in() * (1 - PRICE_RANGE_PERCENTAGE /100);
         double maxPrice = productDetails.getPrice_in() *  (1 + PRICE_RANGE_PERCENTAGE/100);
-        String color = productDetails.getColor();
         LinkedHashSet<String> sortedList = new LinkedHashSet<>();
         LinkedHashSet<String> sortedListOutIfRange = new LinkedHashSet<>();
         ArrayList<ProductDetailsModel> listOfProducts = productDetailsRepo.findByListOfIds(skus);
-        Iterator it = listOfProducts.iterator();
+        Iterator it = skus.iterator();
         while (it.hasNext()) {
-            ProductDetailsModel productDetail = (ProductDetailsModel) it.next();
-            if(isWithinRange(productDetail.getPrice_in(), minPrice, maxPrice)){
-                sortedList.add(productDetail.getSku_id());
-            } else {
-                sortedListOutIfRange.add(productDetail.getSku_id());
+            String sku =  (String) it.next();
+            Optional<ProductDetailsModel> result = listOfProducts.stream()
+                    .filter(product -> product.getSku_id().equals(sku))
+                    .findFirst();
+            if (result.isPresent()) {
+                ProductDetailsModel productDetail = result.get();
+                if(isWithinRange(productDetail.getPrice_in(), minPrice, maxPrice)){
+                    sortedList.add(productDetail.getSku_id());
+                } else {
+                    sortedListOutIfRange.add(productDetail.getSku_id());
+                }
             }
         }
         sortedList.addAll(sortedListOutIfRange);
