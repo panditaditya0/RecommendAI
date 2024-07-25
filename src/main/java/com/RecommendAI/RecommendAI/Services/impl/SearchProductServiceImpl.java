@@ -339,6 +339,7 @@ public class SearchProductServiceImpl implements SearchProductService {
                 sortedListOutIfRange.add(productDetail.getSku_id());
             }
         }
+        sortedList.addAll(sortedListOutIfRange);
         return sortedList;
     }
 }
